@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: backend
+  profiles:
+    include: secrets
+
+  datasource:
+    # Thông tin DB được cấu hình trong application-secrets.yml
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+server:
+  port: 8080

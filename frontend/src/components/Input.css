@@ -1,0 +1,111 @@
+.input-container {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem; /* Reduced to accommodate error message space */
+  position: relative;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  transition: color var(--transition-fast);
+}
+
+.input-field {
+  width: 100%;
+  padding: 1rem 3rem; /* 3rem padding on both sides to avoid text overlapping icons */
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.input-field:focus {
+  border-color: var(--color-primary);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.input-field:focus ~ .input-icon {
+  color: var(--color-primary);
+}
+
+.input-label {
+  position: absolute;
+  left: 3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+/* Floating Label Magic */
+.input-field:focus ~ .input-label,
+.input-field:not(:placeholder-shown) ~ .input-label {
+  top: -0.5rem;
+  left: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-primary);
+  background: var(--color-background); /* Hides the input border behind it */
+  padding: 0 0.5rem;
+  border-radius: var(--radius-md);
+}
+
+.input-password-toggle {
+  position: absolute;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast);
+}
+
+.input-password-toggle:hover {
+  color: var(--color-text-primary);
+}
+
+/* Error State */
+.has-error .input-field {
+  border-color: var(--color-error);
+}
+
+.has-error .input-field:focus ~ .input-label,
+.has-error .input-field:not(:placeholder-shown) ~ .input-label {
+  color: var(--color-error);
+}
+
+.has-error .input-icon {
+  color: var(--color-error);
+}
+
+/* Error Message Area - takes up vertical space even when empty to prevent UI jumping */
+.input-error-message {
+  color: var(--color-error);
+  font-size: 0.85rem;
+  min-height: 1.5rem; /* Reserve space */
+  padding-top: 0.35rem;
+  padding-left: 0.5rem;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.input-error-message.visible {
+  opacity: 1;
+}
