@@ -1,0 +1,452 @@
+.admin-command-page {
+  max-width: 1400px;
+  margin: 24px auto;
+  padding: 0 24px 80px;
+}
+
+.admin-container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.admin-subtext {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.live-status-pill {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+}
+
+/* 1. GMV & TAKE RATE AREA CHART */
+.gmv-chart-container {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.gmv-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.gmv-big-num {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 4px 0 8px;
+}
+
+.gmv-sub-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.take-rate-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  color: var(--primary-glow);
+}
+
+.net-revenue-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+}
+
+.chart-wrapper {
+  width: 100%;
+  height: 220px;
+  position: relative;
+}
+
+.curved-area-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.chart-months-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  border-top: 1px solid var(--surface-border);
+  padding-top: 10px;
+}
+
+/* 2. SPLIT-VIEW DISPUTE ARBITRATION */
+.dispute-split-section {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.dispute-section-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--surface-border);
+  padding-bottom: 14px;
+}
+
+.dispute-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ruling-final-badge {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.ruling-final-badge.refund {
+  background: rgba(244, 63, 94, 0.2);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: var(--critical-status);
+}
+
+.ruling-final-badge.release {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: var(--success-status);
+}
+
+.split-view-arena {
+  display: grid;
+  grid-template-columns: 1fr 280px 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.split-panel {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid var(--surface-border);
+  padding-bottom: 12px;
+}
+
+.panel-header strong {
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.evidence-quote-box {
+  background: rgba(8, 9, 14, 0.8);
+  border-left: 3px solid var(--primary-brand);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.evidence-quote-box p {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.evidence-time {
+  align-self: flex-end;
+}
+
+.evidence-photo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.photo-preview-wrap {
+  width: 100%;
+  height: 160px;
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  position: relative;
+  background: #08090E;
+  border: 1px solid var(--surface-border);
+}
+
+.photo-preview-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.defect-highlight-box {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(244, 63, 94, 0.85);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.buyer-claim-tag {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.buyer-claim-tag strong {
+  color: var(--critical-status);
+}
+
+/* Middle Arbiter Column */
+.split-middle-arbiter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px 10px;
+  gap: 14px;
+  border-left: 1px dashed var(--surface-border);
+  border-right: 1px dashed var(--surface-border);
+}
+
+.arbiter-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: var(--primary-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arbiter-title {
+  color: var(--text-tertiary);
+}
+
+.ruling-buttons-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.refund-ruling-btn {
+  background: var(--critical-status);
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
+  font-size: 13px;
+  padding: 10px;
+}
+
+.refund-ruling-btn:hover {
+  background: #E11D48;
+}
+
+.reject-ruling-btn {
+  font-size: 13px;
+  padding: 10px;
+}
+
+.escrow-note {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  max-width: 200px;
+}
+
+/* Seller Side */
+.seller-proof-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(8, 9, 14, 0.6);
+  border: 1px solid var(--surface-border);
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+}
+
+.doc-item strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.seller-certified-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--success-status);
+  background: rgba(16, 185, 129, 0.08);
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* 3. VENDOR APPROVAL PIPELINE */
+.vendor-pipeline-section {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.vendor-pipeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--surface-border);
+  padding-bottom: 14px;
+}
+
+.vendors-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vendor-review-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: var(--radius-card);
+  gap: 20px;
+}
+
+.vendor-left-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vendor-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vendor-title-row h4 {
+  font-size: 15px;
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--success-status);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pending-badge {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--warning-status);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.vendor-details-row {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.vendor-doc-proof {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.approve-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+@media (max-width: 992px) {
+  .split-view-arena {
+    grid-template-columns: 1fr;
+  }
+  .split-middle-arbiter {
+    border-left: none;
+    border-right: none;
+    border-top: 1px dashed var(--surface-border);
+    border-bottom: 1px dashed var(--surface-border);
+  }
+}

@@ -1,0 +1,189 @@
+.softgate-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 5, 8, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s var(--ease-apple);
+}
+
+.softgate-dialog {
+  width: 100%;
+  max-width: 480px;
+  border-radius: var(--radius-card);
+  padding: 32px;
+  position: relative;
+  box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--surface-border);
+  animation: scaleUp 0.24s var(--ease-apple);
+}
+
+.softgate-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--surface-border);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-control);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-apple);
+}
+
+.softgate-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+.softgate-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--success-status);
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.softgate-header h2 {
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+}
+
+.softgate-header p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 24px;
+}
+
+.one-tap-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.one-tap-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-apple);
+  border: 1px solid var(--surface-border);
+}
+
+.google-btn {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.google-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--surface-border-hover);
+}
+
+.apple-btn {
+  background: #FFFFFF;
+  color: #000000;
+  border: none;
+}
+
+.apple-btn:hover {
+  background: #E2E8F0;
+}
+
+.softgate-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 18px 0;
+}
+
+.softgate-divider::before,
+.softgate-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.softgate-divider span {
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.softgate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.softgate-guarantee {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: rgba(16, 185, 129, 0.06);
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.softgate-submit {
+  width: 100%;
+  padding: 12px;
+  margin-top: 6px;
+  font-size: 15px;
+}
+
+.softgate-success {
+  text-align: center;
+  padding: 30px 10px;
+}
+
+.success-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-pill);
+  background: rgba(16, 185, 129, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.softgate-success h2 {
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+}
+
+.softgate-success p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}

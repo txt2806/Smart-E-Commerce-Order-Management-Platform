@@ -1,0 +1,546 @@
+/* APPLE STORE ONLINE REPLICA CSS */
+
+.apple-store-container {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--canvas-bg);
+  min-height: 100vh;
+}
+
+/* 1. TOP PROMO RIBBON */
+.apple-promo-ribbon {
+  background: rgba(24, 28, 43, 0.6);
+  border-bottom: 1px solid var(--surface-border);
+  padding: 12px 24px;
+  text-align: center;
+}
+
+.promo-ribbon-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.promo-link {
+  color: var(--primary-glow);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.promo-link:hover {
+  text-decoration: underline;
+}
+
+/* MAIN STORE WRAPPER */
+.apple-store-main {
+  max-width: 1240px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 40px 24px 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 64px;
+}
+
+/* 2. APPLE SIGNATURE HEADER */
+.apple-header-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.apple-headline-wrap {
+  flex: 1;
+}
+
+.apple-store-title {
+  font-size: 3rem;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  display: flex;
+  flex-direction: column;
+}
+
+.title-bold {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.title-sub {
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.apple-specialist-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  padding: 14px 18px;
+  max-width: 320px;
+}
+
+.specialist-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.specialist-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.specialist-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.specialist-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.specialist-action {
+  font-size: 12px;
+  color: var(--primary-glow);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 3. PRODUCT FAMILY STRIP (CATEGORIES) */
+.apple-family-strip {
+  width: 100%;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.family-strip-scroll {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.family-item-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px 12px;
+  transition: all var(--duration-fast) var(--ease-apple);
+  flex-shrink: 0;
+}
+
+.family-icon-box {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-apple);
+}
+
+.family-item-btn:hover .family-icon-box {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--surface-border-hover);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+}
+
+.family-item-btn.active .family-icon-box {
+  background: var(--primary-brand);
+  border-color: var(--primary-brand);
+  color: #FFFFFF;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+}
+
+.family-item-btn.active .family-name {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.family-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* SECTION TITLES */
+.section-title-row {
+  margin-bottom: 24px;
+}
+
+.section-title-row h2 {
+  font-size: 1.85rem;
+  letter-spacing: -0.03em;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.heading-bold {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.heading-light {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+/* 4. THE LATEST. SPOTLIGHT CARDS */
+.apple-section-spotlight {
+  display: flex;
+  flex-direction: column;
+}
+
+.spotlight-cards-scroll {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.spotlight-card {
+  background: var(--surface-elevate-1);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  min-height: 440px;
+  overflow: hidden;
+  position: relative;
+  transition: all var(--duration-normal) var(--ease-apple);
+}
+
+.spotlight-card:hover {
+  border-color: var(--surface-border-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.8);
+}
+
+.spotlight-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 2;
+}
+
+.spotlight-badge {
+  color: var(--primary-glow);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.spotlight-title {
+  font-size: 1.5rem;
+  color: #FFFFFF;
+  line-height: 1.2;
+}
+
+.spotlight-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.spotlight-price {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+}
+
+.spotlight-card-image {
+  margin-top: 24px;
+  width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.spotlight-card-image img {
+  width: 90%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.7));
+  transition: transform 0.5s var(--ease-apple);
+}
+
+.spotlight-card:hover .spotlight-card-image img {
+  transform: scale(1.05);
+}
+
+/* 5. ALL PRODUCTS GRID (29 PRODUCTS) */
+.apple-products-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.apple-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.apple-product-card {
+  background: var(--surface-elevate-1);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-apple);
+}
+
+.apple-product-card:hover {
+  border-color: var(--surface-border-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.75);
+}
+
+.product-visual-container {
+  width: 100%;
+  aspect-ratio: 1/1;
+  background: #0B0D14;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.product-main-render,
+.product-hover-render {
+  width: 85%;
+  height: 85%;
+  object-fit: contain;
+  transition: opacity 160ms var(--ease-apple), transform 0.4s var(--ease-apple);
+}
+
+.product-hover-render {
+  position: absolute;
+  opacity: 0;
+}
+
+.apple-product-card:hover .product-hover-render {
+  opacity: 1;
+}
+
+.apple-product-card:hover .product-main-render {
+  transform: scale(1.04);
+}
+
+.apple-badge-pill {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: rgba(24, 28, 43, 0.85);
+  border: 1px solid var(--surface-border);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--primary-glow);
+  backdrop-filter: blur(8px);
+}
+
+.product-info-wrap {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.product-meta-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.category-micro-text {
+  color: var(--primary-glow);
+}
+
+.rating-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.product-title-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.product-desc-text {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+.product-free-shipping {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--success-status);
+  margin-top: 4px;
+}
+
+.product-bottom-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-top: 1px solid var(--surface-border-subtle);
+  padding-top: 16px;
+  margin-top: auto;
+}
+
+.price-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.price-main {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stock-info {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.apple-buy-btn {
+  background: var(--primary-gradient);
+  border: none;
+  color: #FFFFFF;
+  border-radius: var(--radius-pill);
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  height: 34px;
+  transition: all var(--duration-fast) var(--ease-apple);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+}
+
+.apple-buy-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.apple-buy-btn.success {
+  background: var(--success-status);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.5);
+}
+
+.apple-btn-spin {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #FFFFFF;
+  border-radius: var(--radius-pill);
+  animation: spin 0.6s linear infinite;
+}
+
+/* 6. THE APPLE DIFFERENCE */
+.apple-difference-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.difference-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.difference-card {
+  background: var(--surface-elevate-1);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.difference-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.difference-card p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+@media (max-width: 992px) {
+  .apple-header-block {
+    flex-direction: column;
+  }
+  .spotlight-cards-scroll {
+    grid-template-columns: 1fr 1fr;
+  }
+  .difference-cards-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .spotlight-cards-scroll {
+    grid-template-columns: 1fr;
+  }
+  .difference-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .apple-store-title {
+    font-size: 2.2rem;
+  }
+}
