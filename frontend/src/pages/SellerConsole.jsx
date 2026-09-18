@@ -10,50 +10,21 @@ import {
   Edit3, 
   Plus, 
   Filter, 
-  X
+  X,
+  Truck,
+  ArrowRight,
+  PackageCheck
 } from 'lucide-react';
 import { productService } from '../services/product';
 import { categoryService } from '../services/category';
+import { orderService } from '../services/order';
 import './SellerConsole.css';
-
-const DISPATCH_ORDERS = [
-  {
-    id: 'ORD-9824',
-    customer: 'Alex Turner',
-    itemsCount: 1,
-    summary: '1x Apple Vision Pro (Space Gray)',
-    needPackingToday: true,
-    carrier: 'Giao Hỏa Tốc (Ahamove/Grab)',
-    status: 'READY_TO_PACK',
-    barcode: '||| |||| || ||||| |||| ||'
-  },
-  {
-    id: 'ORD-9825',
-    customer: 'Mai Tran',
-    itemsCount: 2,
-    summary: '1x Keychron Q1 Pro, 1x B&O H95',
-    needPackingToday: true,
-    carrier: 'VNPost Express',
-    status: 'READY_TO_PACK',
-    barcode: '|||| || ||||| || ||| ||||'
-  },
-  {
-    id: 'ORD-9810',
-    customer: 'David Nguyen',
-    itemsCount: 1,
-    summary: '1x Herman Miller Embody',
-    needPackingToday: false,
-    carrier: 'Kerry Logistics',
-    status: 'PACKED',
-    barcode: '|| |||| ||| |||| ||||| ||'
-  }
-];
 
 const SellerConsole = () => {
   const [inventory, setInventory] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dispatchQueue, setDispatchQueue] = useState(DISPATCH_ORDERS);
+  const [dispatchQueue, setDispatchQueue] = useState([]);
   const [filterPackingToday, setFilterPackingToday] = useState(false);
   
   // Inline editing state: { rowId, field: 'stock' | 'price', value }
@@ -77,17 +48,19 @@ const SellerConsole = () => {
   const loadDatabaseData = async () => {
     setLoading(true);
     try {
-      const [prods, cats] = await Promise.all([
+      const [prods, cats, ords] = await Promise.all([
         productService.getAllProducts(),
-        categoryService.getAllCategories()
+        categoryService.getAllCategories(),
+        orderService.getSellerOrders().catch(() => [])
       ]);
       setInventory(prods || []);
       setCategories(cats || []);
+      setDispatchQueue(ords || []);
       if (cats && cats.length > 0) {
         setNewProductForm(prev => ({ ...prev, categoryId: cats[0].id }));
       }
     } catch (e) {
-      console.error("Error loading products for seller console:", e);
+      console.error("Error loading products/orders for seller console:", e);
     } finally {
       setLoading(false);
     }
@@ -96,6 +69,17 @@ const SellerConsole = () => {
   useEffect(() => {
     loadDatabaseData();
   }, []);
+
+  const handleUpdateStatus = async (orderId, newStatus) => {
+    try {
+      // Optimistic update
+      setDispatchQueue(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      await orderService.updateSellerOrderStatus(orderId, newStatus);
+    } catch (err) {
+      console.error("Failed to update seller order status:", err);
+      loadDatabaseData();
+    }
+  };
 
   // Start inline edit
   const handleStartEdit = (rowId, field, currentValue) => {
@@ -164,7 +148,7 @@ const SellerConsole = () => {
   };
 
   const filteredDispatch = filterPackingToday 
-    ? dispatchQueue.filter(o => o.needPackingToday) 
+    ? dispatchQueue.filter(o => o.status === 'PENDING' || o.status === 'PREPARING' || o.needPackingToday) 
     : dispatchQueue;
 
   // Calculate dynamic stats from real database inventory
@@ -412,35 +396,89 @@ const SellerConsole = () => {
           </div>
 
           <div className="dispatch-cards-stack">
-            {filteredDispatch.map(order => (
-              <div key={order.id} className="dispatch-order-row surface-elevate-2">
-                <div className="dispatch-order-left">
-                  <div className="dispatch-code-group">
-                    <span className="mono-num order-id">#{order.id}</span>
-                    {order.needPackingToday && (
-                      <span className="today-badge micro-label">CẦN GIAO HÔM NAY</span>
+            {filteredDispatch.map(order => {
+              const code = order.orderCode || ('ORD-' + order.id);
+              const summaryText = order.summary || (order.items?.map(i => `${i.quantity}x ${i.productName}`).join(', ') || 'Chi tiết đơn hàng');
+              const customerName = order.customerName || order.customer || 'Khách Hàng Smart Store';
+              const carrier = order.carrier || (order.paymentMethod === 'SEPAY_BANK_TRANSFER' ? 'VietQR SePay (Đã chuyển khoản)' : 'Giao Hỏa Tốc (COD)');
+              const totalAmount = Number(order.total || order.subtotal || 0);
+
+              return (
+                <div key={order.id} className="dispatch-order-row surface-elevate-2">
+                  <div className="dispatch-order-left">
+                    <div className="dispatch-code-group">
+                      <span className="mono-num order-id">#{code}</span>
+                      {order.status === 'PENDING' && (
+                        <span className="today-badge micro-label" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171' }}>ĐƠN MỚI</span>
+                      )}
+                      {order.status === 'PREPARING' && (
+                        <span className="today-badge micro-label" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24' }}>ĐANG ĐÓNG GÓI</span>
+                      )}
+                      {order.status === 'SHIPPING' && (
+                        <span className="today-badge micro-label" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>ĐANG GIAO</span>
+                      )}
+                      {order.status === 'DELIVERED' && (
+                        <span className="today-badge micro-label" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}>HOÀN TẤT</span>
+                      )}
+                    </div>
+                    <strong className="order-summary-text">{summaryText}</strong>
+                    <div className="order-carrier-sub">
+                      <span>Khách: {customerName}</span>
+                      <span>•</span>
+                      <span>{carrier}</span>
+                      <span>•</span>
+                      <strong className="mono-num" style={{ color: 'var(--primary-glow)' }}>${totalAmount.toFixed(2)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="dispatch-barcode-col">
+                    <div className="mock-barcode-render mono-num">||| |||| || |||||</div>
+                    <span className="barcode-caption micro-label">MÃ VẬN ĐƠN</span>
+                  </div>
+
+                  <div className="dispatch-status-col" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
+                    {order.status === 'PENDING' && (
+                      <button 
+                        className="btn-primary" 
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                        onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
+                      >
+                        <PackageCheck size={14} />
+                        <span>Xác Nhận & Đóng Gói</span>
+                      </button>
+                    )}
+
+                    {order.status === 'PREPARING' && (
+                      <button 
+                        className="btn-primary" 
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'var(--primary-brand)' }}
+                        onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}
+                      >
+                        <Truck size={14} />
+                        <span>Bàn Giao Vận Chuyển</span>
+                      </button>
+                    )}
+
+                    {order.status === 'SHIPPING' && (
+                      <button 
+                        className="btn-secondary" 
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', color: 'var(--success-status)', borderColor: 'rgba(16, 185, 129, 0.3)' }}
+                        onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
+                      >
+                        <Check size={14} />
+                        <span>Xác Nhận Đã Giao</span>
+                      </button>
+                    )}
+
+                    {order.status === 'DELIVERED' && (
+                      <span className="dispatch-badge delivered" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'var(--success-status)' }}>
+                        Đã Giao Thành Công
+                      </span>
                     )}
                   </div>
-                  <strong className="order-summary-text">{order.summary}</strong>
-                  <div className="order-carrier-sub">
-                    <span>Khách: {order.customer}</span>
-                    <span>•</span>
-                    <span>Hãng: {order.carrier}</span>
-                  </div>
                 </div>
-
-                <div className="dispatch-barcode-col">
-                  <div className="mock-barcode-render mono-num">{order.barcode}</div>
-                  <span className="barcode-caption micro-label">MÃ QUÉT TỰ ĐỘNG</span>
-                </div>
-
-                <div className="dispatch-status-col">
-                  <span className={`dispatch-badge ${order.status.toLowerCase()}`}>
-                    {order.status === 'READY_TO_PACK' ? 'Chờ Đóng Gói' : 'Đã Đóng Gói'}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </div>

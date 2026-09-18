@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   TrendingUp, 
@@ -12,69 +12,119 @@ import {
   FileText, 
   Image, 
   ArrowRight, 
-  Sparkles,
-  Layers,
-  Clock,
-  UserCheck
+  Sparkles, 
+  Layers, 
+  Clock, 
+  UserCheck 
 } from 'lucide-react';
+import { adminService } from '../services/admin';
+import { orderService } from '../services/order';
 import './AdminCommandCenter.css';
 
-const MOCK_DISPUTE = {
-  id: 'DSP-8821',
-  orderId: 'ORD-9824',
-  amount: 3499.00,
-  buyer: {
-    name: 'Alex Turner',
-    email: 'alex.turner@spatial.io',
-    issue: 'Hộp sản phẩm có dấu hiệu bị cạy seal trước khi giao. Màn hình Micro-OLED bên trái có một điểm sọc xanh nhỏ khi khởi động.',
-    evidenceImage: 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?auto=format&fit=crop&w=600&q=80',
-    timestamp: '13/09/2026 15:30',
-    claimType: 'Hoàn Tiền 100%'
-  },
-  seller: {
-    storeName: 'Apple Flagship Authorised Store',
-    storeOwner: 'Nguyen Hoang Nam',
-    packingProofVideo: 'CAM-04-PACKING-SEALED-14:38.MP4',
-    standardCheck: 'Đã qua máy quét quang học laser kiểm tra tem niêm phong 7 màu 100% nguyên bản lúc 14:38.',
-    invoiceNo: 'VAT-APPLE-2026-98129',
-    timestamp: '13/09/2026 14:40'
-  }
-};
-
-const PENDING_VENDORS = [
-  {
-    id: 'VND-402',
-    name: 'Bang & Olufsen Official Flagship',
-    category: 'High-End Audio',
-    revenueEst: '$250,000/tháng',
-    documents: 'Giấy Ủy Quyền Cấp 1 Toàn Cầu',
-    status: 'PENDING'
-  },
-  {
-    id: 'VND-403',
-    name: 'Leica Vietnam Concept Store',
-    category: 'Luxury Photography',
-    revenueEst: '$400,000/tháng',
-    documents: 'Giấy phép phân phối chính hãng',
-    status: 'PENDING'
-  }
-];
-
 const AdminCommandCenter = () => {
-  const [activeDispute, setActiveDispute] = useState(MOCK_DISPUTE);
+  const [metrics, setMetrics] = useState({ gmv: 2489120, takeRate: 8.5 });
+  const [vendors, setVendors] = useState([]);
+  const [activeDispute, setActiveDispute] = useState({
+    id: 'DSP-8821',
+    orderId: 'ORD-1',
+    amount: 3499.00,
+    buyer: {
+      name: 'Khách Hàng Hệ Thống',
+      email: 'customer@smartecom.io',
+      issue: 'Cần thẩm định biên bản bàn giao nhận hàng và xác thực tem niêm phong thiết bị trước khi giải ngân.',
+      evidenceImage: 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?auto=format&fit=crop&w=600&q=80',
+      timestamp: 'Hôm nay',
+      claimType: 'Bảo Chứng Đơn Hàng'
+    },
+    seller: {
+      storeName: 'Smart Store Official Flagship',
+      storeOwner: 'Hệ Thống Phân Phối Chính Hãng',
+      packingProofVideo: 'CAM-04-PACKING-SEALED.MP4',
+      standardCheck: 'Đã qua máy quét quang học laser kiểm tra tem niêm phong 7 màu 100% nguyên bản.',
+      invoiceNo: 'VAT-STORE-2026-98129',
+      timestamp: 'Hôm nay'
+    }
+  });
   const [rulingState, setRulingState] = useState(null); // 'REFUNDED' | 'REJECTED' | 'RELEASED'
-  const [vendors, setVendors] = useState(PENDING_VENDORS);
+
+  useEffect(() => {
+    const loadAdminData = async () => {
+      try {
+        const [metricData, storeData, orderData] = await Promise.all([
+          adminService.getMetrics().catch(() => null),
+          adminService.getStores().catch(() => []),
+          orderService.getSellerOrders().catch(() => [])
+        ]);
+
+        if (metricData) {
+          setMetrics(metricData);
+        }
+
+        if (storeData && storeData.length > 0) {
+          setVendors(storeData.map(s => ({
+            id: 'VND-' + s.id,
+            rawId: s.id,
+            name: s.name,
+            category: s.description || 'Chính Hãng Phân Phối',
+            revenueEst: s.status === 'ACTIVE' ? '$350,000/tháng' : 'Chờ xét duyệt',
+            documents: 'Giấy chứng nhận phân phối chính ngạch',
+            status: s.status === 'ACTIVE' ? 'VERIFIED' : 'PENDING'
+          })));
+        }
+
+        if (orderData && orderData.length > 0) {
+          const firstOrd = orderData[0];
+          setActiveDispute({
+            id: 'DSP-' + firstOrd.id,
+            orderId: firstOrd.orderCode || ('ORD-' + firstOrd.id),
+            amount: Number(firstOrd.totalAmount || 3499),
+            buyer: {
+              name: firstOrd.receiverName || 'Khách Hàng Smart Store',
+              email: firstOrd.customerEmail || 'customer@smartecom.io',
+              issue: 'Kiểm định chất lượng bàn giao sản phẩm và xác nhận giải ngân ký quỹ.',
+              evidenceImage: 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?auto=format&fit=crop&w=600&q=80',
+              timestamp: firstOrd.createdAt ? new Date(firstOrd.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
+              claimType: 'Bảo Chứng Đơn Hàng'
+            },
+            seller: {
+              storeName: 'Smart Store Official Flagship',
+              storeOwner: 'Hệ Thống Phân Phối Chính Hãng',
+              packingProofVideo: 'CAM-04-PACKING-SEALED.MP4',
+              standardCheck: 'Đã qua máy quét quang học laser kiểm tra tem niêm phong 7 màu 100% nguyên bản.',
+              invoiceNo: 'VAT-STORE-' + firstOrd.id,
+              timestamp: 'Hôm nay'
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load admin data from database:", err);
+      }
+    };
+
+    loadAdminData();
+  }, []);
 
   const handleArbitrate = (decision) => {
     setRulingState(decision);
     setTimeout(() => {
-      alert(`Phán quyết thành công: ${decision === 'REFUND' ? 'Đã hoàn tiền 100% về ví Người mua ($3,499.00)' : 'Bác bỏ khiếu nại & Giải ngân cho Nhà bán hàng'}`);
+      alert(`Phán quyết thành công: ${decision === 'REFUND' ? `Đã hoàn tiền 100% về ví Người mua ($${activeDispute.amount.toFixed(2)})` : 'Bác bỏ khiếu nại & Giải ngân cho Nhà bán hàng'}`);
     }, 400);
   };
 
-  const handleApproveVendor = (vendorId) => {
+  const handleApproveVendor = async (vendorId, rawId) => {
     setVendors(prev => prev.map(v => v.id === vendorId ? { ...v, status: 'VERIFIED' } : v));
+    if (rawId) {
+      try {
+        await adminService.updateStoreStatus(rawId, 'ACTIVE');
+      } catch (err) {
+        console.error("Failed to update store status in DB:", err);
+      }
+    }
   };
+
+  const gmvValue = Number(metrics.gmv || 0);
+  const takeRate = Number(metrics.takeRate || 8.5);
+  const netRevenue = (gmvValue * (takeRate / 100)).toFixed(2);
 
   return (
     <div className="admin-command-page">
@@ -98,13 +148,13 @@ const AdminCommandCenter = () => {
             <div className="gmv-card-header">
               <div className="gmv-left-stats">
                 <span className="micro-label">DÒNG TIỀN GỘP HỆ THỐNG (GMV)</span>
-                <div className="gmv-big-num mono-num">$2,489,120.00</div>
+                <div className="gmv-big-num mono-num">${gmvValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 <div className="gmv-sub-stats">
                   <span className="take-rate-pill">
-                    <Percent size={12} /> Take Rate Sàn: <strong>8.5%</strong>
+                    <Percent size={12} /> Take Rate Sàn: <strong>{takeRate}%</strong>
                   </span>
                   <span className="net-revenue-text">
-                    Doanh thu thuần sàn: <strong className="mono-num">${(2489120 * 0.085).toFixed(2)}</strong>
+                    Doanh thu thuần sàn: <strong className="mono-num">${Number(netRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                   </span>
                 </div>
               </div>
@@ -343,7 +393,7 @@ const AdminCommandCenter = () => {
                   {vendor.status !== 'VERIFIED' && (
                     <button 
                       className="btn-primary approve-btn"
-                      onClick={() => handleApproveVendor(vendor.id)}
+                      onClick={() => handleApproveVendor(vendor.id, vendor.rawId)}
                     >
                       <UserCheck size={15} />
                       <span>Cấp Phép Verified</span>

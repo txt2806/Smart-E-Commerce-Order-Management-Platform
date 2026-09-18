@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Award, 
   Sparkles, 
@@ -19,82 +19,43 @@ import {
   ShieldAlert,
   ArrowUpRight
 } from 'lucide-react';
+import { orderService } from '../services/order';
+import { voucherService } from '../services/voucher';
+import { authService } from '../services/auth';
 import './CustomerPortal.css';
 
-const MOCK_ORDERS = [
-  {
-    id: 'ORD-9824',
-    date: '13/09/2026 14:15',
-    total: 3499.00,
-    status: 'IN_TRANSIT', // 'PLACED' | 'PACKED' | 'IN_TRANSIT' | 'DELIVERED'
-    eta: 'Hôm nay lúc 16:45',
-    shipper: {
-      name: 'Trần Văn Hoàng (Giao Hỏa Tốc)',
-      phone: '0982-***-889',
-      vehicle: 'Honda SH - Biển số: 29A1-982.14',
-      currentLocation: 'Cách bạn 2.4 km • Đang di chuyển trên đường Lê Văn Lương'
-    },
-    items: [
-      {
-        id: 1,
-        name: 'Apple Vision Pro Spatial Computer',
-        sku: 'AP-VISPRO-M2',
-        color: 'Space Gray',
-        price: 3499.00,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?auto=format&fit=crop&w=400&q=80'
-      }
-    ]
-  },
-  {
-    id: 'ORD-8921',
-    date: '02/09/2026 10:30',
-    total: 999.00,
-    status: 'DELIVERED',
-    eta: 'Đã nhận lúc 15:20 ngày 02/09/2026',
-    items: [
-      {
-        id: 3,
-        name: 'Bang & Olufsen Beoplay H95 Hi-Res',
-        sku: 'BO-H95-INDIGO',
-        color: 'Midnight Navy',
-        price: 999.00,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=400&q=80'
-      }
-    ]
-  }
-];
-
-const SAVED_VOUCHERS = [
-  {
-    code: 'VIP20',
-    title: 'Đặc Quyền Titanium',
-    discount: 'Giảm 20% đơn từ $1,000',
-    expiry: 'Hạn dùng: 30/09/2026'
-  },
-  {
-    code: 'SMART50',
-    title: 'Khách Hàng Thân Thiết',
-    discount: 'Giảm $50 toàn sàn',
-    expiry: 'Hạn dùng: 15/10/2026'
-  },
-  {
-    code: 'FREESHIP',
-    title: 'Vận Chuyển Hỏa Tốc',
-    discount: 'Miễn 100% phí giao siêu tốc',
-    expiry: 'Vĩnh viễn'
-  }
-];
-
 const CustomerPortal = ({ onAddToCart }) => {
-  const [orders, setOrders] = useState(MOCK_ORDERS);
+  const [orders, setOrders] = useState([]);
+  const [vouchers, setVouchers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState(null);
   const [disputeOrder, setDisputeOrder] = useState(null);
   const [disputeReason, setDisputeReason] = useState('Hàng không đúng mô tả');
   const [disputeEvidence, setDisputeEvidence] = useState(null);
   const [disputeSubmitted, setDisputeSubmitted] = useState(false);
   const [repurchaseSuccess, setRepurchaseSuccess] = useState(null);
+
+  const currentUser = authService.getCurrentUser();
+
+  const fetchOrdersAndVouchers = async () => {
+    setLoading(true);
+    try {
+      const [orderData, voucherData] = await Promise.all([
+        orderService.getMyOrders().catch(() => []),
+        voucherService.getAllVouchers().catch(() => [])
+      ]);
+      setOrders(orderData || []);
+      setVouchers(voucherData || []);
+    } catch (err) {
+      console.error('Failed to load customer orders/vouchers:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrdersAndVouchers();
+  }, []);
 
   const handleCopyCode = (code) => {
     navigator.clipboard.writeText(code);
@@ -103,9 +64,17 @@ const CustomerPortal = ({ onAddToCart }) => {
   };
 
   const handleRepurchase = (order) => {
-    order.items.forEach(item => {
-      onAddToCart(item);
-    });
+    if (order.items && onAddToCart) {
+      order.items.forEach(item => {
+        onAddToCart({
+          id: item.productId,
+          name: item.productName,
+          price: Number(item.priceAtBuy),
+          quantity: item.quantity,
+          image: item.imageUrl
+        });
+      });
+    }
     setRepurchaseSuccess(order.id);
     setTimeout(() => setRepurchaseSuccess(null), 2000);
   };
@@ -177,13 +146,13 @@ const CustomerPortal = ({ onAddToCart }) => {
             <h4>Kho Voucher & Mã Ưu Đãi Đã Lưu</h4>
           </div>
           <div className="vouchers-grid">
-            {SAVED_VOUCHERS.map(v => (
+            {vouchers.map(v => (
               <div key={v.code} className="voucher-ticket surface-card">
                 <div className="ticket-left">
                   <span className="ticket-code mono-num">{v.code}</span>
                   <span className="ticket-title">{v.title}</span>
                   <span className="ticket-disc">{v.discount}</span>
-                  <span className="ticket-exp micro-label">{v.expiry}</span>
+                  <span className="ticket-exp micro-label">{v.validUntil ? `Hạn dùng: ${new Date(v.validUntil).toLocaleDateString('vi-VN')}` : 'Vĩnh viễn'}</span>
                 </div>
                 <button 
                   className="copy-voucher-btn"
@@ -201,152 +170,198 @@ const CustomerPortal = ({ onAddToCart }) => {
         <section className="my-orders-section">
           <div className="orders-header-row">
             <h3>Đơn Hàng Của Tôi & Tiến Độ Vận Đơn</h3>
-            <span className="mono-num micro-label">{orders.length} Đơn gần nhất</span>
+            <span className="mono-num micro-label">{orders.length} Đơn hàng</span>
           </div>
 
-          <div className="orders-timeline-stack">
-            {orders.map(order => (
-              <div key={order.id} className="order-item-card surface-card">
-                <div className="order-card-top">
-                  <div className="order-id-group">
-                    <Package size={18} color="var(--primary-brand)" />
-                    <span className="order-code mono-num">#{order.id}</span>
-                    <span className="order-date micro-label">{order.date}</span>
-                  </div>
-                  <div className="order-amount-group">
-                    <span className="micro-label">Tổng thanh toán:</span>
-                    <strong className="mono-num order-price">${order.total.toFixed(2)}</strong>
-                  </div>
-                </div>
+          {loading ? (
+            <div className="orders-loading-box" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <span>Đang tải danh sách đơn hàng...</span>
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="orders-empty-card surface-card" style={{ padding: '3.5rem 2rem', textAlign: 'center' }}>
+              <Package size={48} color="var(--primary-glow)" style={{ marginBottom: '1rem', opacity: 0.8 }} />
+              <h4 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Chưa có đơn hàng nào</h4>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', maxWidth: '420px', margin: '0 auto 1.5rem auto' }}>
+                Bạn chưa thực hiện đơn đặt hàng nào. Hãy khám phá ngay các sản phẩm công nghệ tuyệt tác tại Cửa hàng Smart Store!
+              </p>
+              <a href="/" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', padding: '0.75rem 1.5rem' }}>
+                Khám Phá Cửa Hàng <ChevronRight size={16} />
+              </a>
+            </div>
+          ) : (
+            <div className="orders-timeline-stack">
+              {orders.map(order => {
+                const orderCode = order.orderCode || ('ORD-' + order.id);
+                const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleString('vi-VN') : 'Mới đặt';
+                const totalVal = Number(order.totalAmount || 0);
+                const isStep2 = ['PROCESSING', 'COMPLETED', 'SHIPPING', 'DELIVERED'].includes(order.status);
+                const isStep3Active = ['PROCESSING', 'SHIPPING'].includes(order.status);
+                const isStep3Done = ['COMPLETED', 'DELIVERED'].includes(order.status);
+                const isStep4Done = ['COMPLETED', 'DELIVERED'].includes(order.status);
 
-                {/* 4-STEP METALLIC TIMELINE TRACKER */}
-                <div className="metallic-timeline-container">
-                  <div className="timeline-steps">
-                    {/* Step 1: Placed */}
-                    <div className="timeline-step completed">
-                      <div className="step-metal-node">
-                        <Check size={12} />
-                      </div>
-                      <div className="step-meta">
-                        <span className="step-title">Đặt Hàng</span>
-                        <span className="step-time micro-label mono-num">14:15</span>
-                      </div>
-                    </div>
-
-                    {/* Step 2: Packed */}
-                    <div className="timeline-step completed">
-                      <div className="step-metal-node">
-                        <Check size={12} />
-                      </div>
-                      <div className="step-meta">
-                        <span className="step-title">Đã Đóng Gói</span>
-                        <span className="step-time micro-label mono-num">14:40</span>
-                      </div>
-                    </div>
-
-                    {/* Step 3: In Transit */}
-                    <div className={`timeline-step ${order.status === 'IN_TRANSIT' ? 'active-pulse' : order.status === 'DELIVERED' ? 'completed' : ''}`}>
-                      <div className="step-metal-node">
-                        {order.status === 'DELIVERED' ? <Check size={12} /> : <Truck size={13} />}
-                      </div>
-                      <div className="step-meta">
-                        <span className="step-title">Đang Vận Chuyển</span>
-                        <span className="step-time micro-label mono-num">15:10</span>
-                      </div>
-                    </div>
-
-                    {/* Step 4: Delivered */}
-                    <div className={`timeline-step ${order.status === 'DELIVERED' ? 'completed' : ''}`}>
-                      <div className="step-metal-node">
-                        <CheckCircle2 size={13} />
-                      </div>
-                      <div className="step-meta">
-                        <span className="step-title">Giao Thành Công</span>
-                        <span className="step-time micro-label mono-num">
-                          {order.status === 'DELIVERED' ? 'Hoàn tất' : 'Dự kiến 16:45'}
+                return (
+                  <div key={order.id} className="order-item-card surface-card">
+                    <div className="order-card-top">
+                      <div className="order-id-group">
+                        <Package size={18} color="var(--primary-brand)" />
+                        <span className="order-code mono-num">{orderCode}</span>
+                        <span className="order-date micro-label">{orderDate}</span>
+                        <span className={`status-pill ${order.status?.toLowerCase() || 'pending'}`} style={{
+                          fontSize: '0.7rem',
+                          padding: '0.2rem 0.6rem',
+                          borderRadius: '12px',
+                          background: isStep4Done ? 'rgba(16, 185, 129, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                          color: isStep4Done ? 'var(--success-status)' : 'var(--primary-glow)',
+                          fontWeight: '600'
+                        }}>
+                          {order.status === 'COMPLETED' || order.status === 'DELIVERED' ? 'ĐÃ GIAO THÀNH CÔNG' :
+                           order.status === 'PROCESSING' || order.status === 'SHIPPING' ? 'ĐANG VẬN CHUYỂN' :
+                           order.status === 'CANCELLED' ? 'ĐÃ HỦY' : 'CHỜ XÁC NHẬN'}
                         </span>
                       </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* GPS MOCK STATUS (When IN_TRANSIT) */}
-                {order.shipper && order.status === 'IN_TRANSIT' && (
-                  <div className="shipper-live-box">
-                    <div className="shipper-info-left">
-                      <div className="pulse-indicator">
-                        <div className="pulse-dot" />
-                        <span className="micro-label" style={{ color: 'var(--success-status)' }}>GPS LIVE TRACKING</span>
-                      </div>
-                      <p className="shipper-name">{order.shipper.name}</p>
-                      <div className="shipper-loc-text">
-                        <MapPin size={14} color="var(--primary-glow)" />
-                        <span>{order.shipper.currentLocation}</span>
-                      </div>
-                      <div className="shipper-phone-text">
-                        <Phone size={13} />
-                        <span>{order.shipper.phone} • {order.shipper.vehicle}</span>
+                      <div className="order-amount-group">
+                        <span className="micro-label">Tổng thanh toán:</span>
+                        <strong className="mono-num order-price">${totalVal.toFixed(2)}</strong>
                       </div>
                     </div>
 
-                    <div className="eta-badge-card">
-                      <Clock size={16} color="var(--warning-status)" />
-                      <div>
-                        <span className="micro-label">Dự kiến giao hàng</span>
-                        <strong>{order.eta}</strong>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                    {/* 4-STEP METALLIC TIMELINE TRACKER */}
+                    <div className="metallic-timeline-container">
+                      <div className="timeline-steps">
+                        {/* Step 1: Placed */}
+                        <div className="timeline-step completed">
+                          <div className="step-metal-node">
+                            <Check size={12} />
+                          </div>
+                          <div className="step-meta">
+                            <span className="step-title">Đặt Hàng</span>
+                            <span className="step-time micro-label mono-num">Đã xác nhận</span>
+                          </div>
+                        </div>
 
-                {/* Order Item List & Actions */}
-                <div className="order-items-sublist">
-                  {order.items.map(item => (
-                    <div key={item.id} className="sub-item-row">
-                      <img src={item.image} alt={item.name} className="sub-item-thumb" />
-                      <div className="sub-item-details">
-                        <h5>{item.name}</h5>
-                        <div className="sub-item-tags">
-                          <span className="mono-num micro-label">SKU: {item.sku}</span>
-                          <span className="mono-num micro-label">Màu: {item.color}</span>
-                          <span className="mono-num micro-label">x{item.quantity}</span>
+                        {/* Step 2: Packed */}
+                        <div className={`timeline-step ${isStep2 ? 'completed' : 'active-pulse'}`}>
+                          <div className="step-metal-node">
+                            {isStep2 ? <Check size={12} /> : <Package size={12} />}
+                          </div>
+                          <div className="step-meta">
+                            <span className="step-title">Đã Đóng Gói</span>
+                            <span className="step-time micro-label mono-num">Kho Smart Store</span>
+                          </div>
+                        </div>
+
+                        {/* Step 3: In Transit */}
+                        <div className={`timeline-step ${isStep3Active ? 'active-pulse' : isStep3Done ? 'completed' : ''}`}>
+                          <div className="step-metal-node">
+                            {isStep3Done ? <Check size={12} /> : <Truck size={13} />}
+                          </div>
+                          <div className="step-meta">
+                            <span className="step-title">Đang Vận Chuyển</span>
+                            <span className="step-time micro-label mono-num">Giao Hỏa Tốc</span>
+                          </div>
+                        </div>
+
+                        {/* Step 4: Delivered */}
+                        <div className={`timeline-step ${isStep4Done ? 'completed' : ''}`}>
+                          <div className="step-metal-node">
+                            <CheckCircle2 size={13} />
+                          </div>
+                          <div className="step-meta">
+                            <span className="step-title">Giao Thành Công</span>
+                            <span className="step-time micro-label mono-num">
+                              {isStep4Done ? 'Đã hoàn tất' : 'Dự kiến 2h'}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <span className="sub-item-price mono-num">${item.price.toFixed(2)}</span>
                     </div>
-                  ))}
-                </div>
 
-                {/* Footer Buttons: One-click Repurchase & Dispute */}
-                <div className="order-actions-bar">
-                  <button 
-                    className="btn-primary repurchase-btn"
-                    onClick={() => handleRepurchase(order)}
-                  >
-                    {repurchaseSuccess === order.id ? (
-                      <>
-                        <Check size={16} />
-                        <span>Đã Thêm Lại Giỏ Hàng!</span>
-                      </>
-                    ) : (
-                      <>
-                        <RotateCcw size={16} />
-                        <span>Mua Lại Lần Nữa</span>
-                      </>
+                    {/* Recipient info & Shipping line */}
+                    {order.recipientName && (
+                      <div className="order-shipping-meta-bar" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem',
+                        padding: '0.6rem 1rem',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.8rem',
+                        color: 'var(--text-secondary)',
+                        margin: '1rem 0'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <MapPin size={13} color="var(--primary-glow)" />
+                          <span>Người nhận: <strong>{order.recipientName}</strong> ({order.phone || '09xx'})</span>
+                        </div>
+                        <div style={{ opacity: 0.6 }}>•</div>
+                        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span>{order.addressLine}, {order.city}</span>
+                        </div>
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span className="micro-label">PTTT:</span>
+                          <strong style={{ color: 'var(--text-primary)' }}>{order.paymentMethod === 'SEPAY_BANK_TRANSFER' ? 'VietQR SePay' : 'COD'}</strong>
+                        </div>
+                      </div>
                     )}
-                  </button>
 
-                  <button 
-                    className="btn-secondary dispute-btn"
-                    onClick={() => setDisputeOrder(order)}
-                  >
-                    <AlertCircle size={15} color="var(--warning-status)" />
-                    <span>Yêu Cầu Hỗ Trợ / Khiếu Nại</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+                    {/* Order Item List & Actions */}
+                    <div className="order-items-sublist">
+                      {order.items && order.items.map((item, idx) => (
+                        <div key={item.id || idx} className="sub-item-row">
+                          <img 
+                            src={item.imageUrl || item.image || 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=400&q=80'} 
+                            alt={item.productName || item.name} 
+                            className="sub-item-thumb" 
+                          />
+                          <div className="sub-item-details">
+                            <h5>{item.productName || item.name}</h5>
+                            <div className="sub-item-tags">
+                              {item.sku && <span className="mono-num micro-label">SKU: {item.sku}</span>}
+                              {item.color && <span className="mono-num micro-label">Màu: {item.color}</span>}
+                              <span className="mono-num micro-label">x{item.quantity}</span>
+                              {item.storeName && <span className="mono-num micro-label" style={{ color: 'var(--primary-glow)' }}>{item.storeName}</span>}
+                            </div>
+                          </div>
+                          <span className="sub-item-price mono-num">
+                            ${(Number(item.priceAtBuy || item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Footer Buttons: One-click Repurchase & Dispute */}
+                    <div className="order-actions-bar">
+                      <button 
+                        className="btn-primary repurchase-btn"
+                        onClick={() => handleRepurchase(order)}
+                      >
+                        {repurchaseSuccess === order.id ? (
+                          <>
+                            <Check size={16} />
+                            <span>Đã Thêm Lại Giỏ Hàng!</span>
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw size={16} />
+                            <span>Mua Lại Lần Nữa</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button 
+                        className="btn-secondary dispute-btn"
+                        onClick={() => setDisputeOrder(order)}
+                      >
+                        <AlertCircle size={15} color="var(--warning-status)" />
+                        <span>Yêu Cầu Hỗ Trợ / Khiếu Nại</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
 

@@ -23,21 +23,6 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
-    // Temporary method to seed some categories for testing
-    public void seedCategories() {
-        if (categoryRepository.count() == 0) {
-            Category c1 = new Category();
-            c1.setName("Electronics");
-            c1.setDescription("Gadgets and devices");
-            categoryRepository.save(c1);
-
-            Category c2 = new Category();
-            c2.setName("Fashion");
-            c2.setDescription("Clothing and accessories");
-            categoryRepository.save(c2);
-        }
-    }
-
     private CategoryDto mapToDto(Category category) {
         CategoryDto dto = new CategoryDto();
         dto.setId(category.getId());

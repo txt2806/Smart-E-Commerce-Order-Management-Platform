@@ -14,11 +14,21 @@ import {
   CreditCard,
   Settings
 } from 'lucide-react';
+import { productService } from '../services/product';
 import './CommandPalette.css';
 
 const CommandPalette = ({ isOpen, onClose, onSelectRole }) => {
   const [query, setQuery] = useState('');
+  const [dbProducts, setDbProducts] = useState([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isOpen) {
+      productService.getAllProducts()
+        .then(prods => setDbProducts(prods || []))
+        .catch(err => console.error("Error loading products for CommandPalette:", err));
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -38,6 +48,17 @@ const CommandPalette = ({ isOpen, onClose, onSelectRole }) => {
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const productLookupItems = dbProducts.map(p => ({
+    id: 'prod-' + p.id,
+    title: `Sản phẩm: ${p.name}`,
+    subtitle: `SKU: ${p.sku || 'N/A'} • Giá: $${parseFloat(p.basePrice || 0).toLocaleString()} • Tồn kho: ${p.stock || 0} cái`,
+    icon: Sparkles,
+    action: () => {
+      navigate('/');
+      onClose();
+    }
+  }));
 
   const allActions = [
     {
@@ -90,40 +111,8 @@ const CommandPalette = ({ isOpen, onClose, onSelectRole }) => {
       ]
     },
     {
-      category: 'Tra cứu nhanh (Quick Lookups & SKUs)',
-      items: [
-        {
-          id: 'sku-vision',
-          title: 'Tra cứu SKU: AP-VISPRO-M2',
-          subtitle: 'Apple Vision Pro Spatial 512GB - Tồn kho: 8 - Trạng thái: Sẵn sàng',
-          icon: Sparkles,
-          action: () => {
-            navigate('/seller');
-            onClose();
-          }
-        },
-        {
-          id: 'sku-mbp',
-          title: 'Tra cứu SKU: MB-M3MAX-64',
-          subtitle: 'MacBook Pro 16" Space Black M3 Max - Tồn kho: 3 (Nguy cấp)',
-          icon: Sparkles,
-          action: () => {
-            navigate('/seller');
-            onClose();
-          }
-        },
-        {
-          id: 'order-sample',
-          title: 'Đơn hàng #ORD-9824 (Đang giao hàng GPS)',
-          subtitle: 'Khách: Alex Turner - 1x Studio Display XDR - Dự kiến 14:30',
-          icon: ShoppingCart,
-          action: () => {
-            onSelectRole('customer');
-            navigate('/customer');
-            onClose();
-          }
-        }
-      ]
+      category: 'Tra cứu sản phẩm & SKU thời gian thực (Database)',
+      items: productLookupItems
     }
   ];
 

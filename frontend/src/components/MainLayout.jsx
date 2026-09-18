@@ -3,26 +3,28 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import CommandPalette from './CommandPalette';
 import CartDrawer from './CartDrawer';
-import SoftGateModal from './SoftGateModal';
 import ProductDetailDrawer from './ProductDetailDrawer';
+import CheckoutModal from './CheckoutModal';
 import './MainLayout.css';
 
 const MainLayout = () => {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: 'Apple Vision Pro Spatial Computer',
-      sku: 'AP-VISPRO-M2',
-      color: 'Space Gray',
-      price: 3499.00,
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?auto=format&fit=crop&w=400&q=80'
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('smart_store_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-  ]);
+  });
+
+  useEffect(() => {
+    localStorage.setItem('smart_store_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
+
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [cartBouncing, setCartBouncing] = useState(false);
-  const [isSoftGateOpen, setIsSoftGateOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPDPProduct, setSelectedPDPProduct] = useState(null);
   const [checkoutAmount, setCheckoutAmount] = useState(0);
 
@@ -92,20 +94,18 @@ const MainLayout = () => {
   const handleTriggerCheckout = (total) => {
     setCheckoutAmount(total);
     setIsCartOpen(false);
-    setIsSoftGateOpen(true);
+    setIsCheckoutOpen(true);
   };
 
-  const handleSoftGateSuccess = (userData) => {
-    alert(`Đơn hàng đã được tạo thành công cho ${userData.name} (${userData.email})! Mã đơn hàng: #ORD-${Math.floor(1000 + Math.random() * 9000)}. Vui lòng xem tại Customer Portal.`);
+  const handleCheckoutSuccess = (order) => {
     setCartItems([]);
-    navigate('/customer');
   };
 
   const totalItemCount = cartItems.reduce((acc, it) => acc + it.quantity, 0);
 
   return (
     <div className="main-editorial-layout">
-      {/* Sticky Top Navbar with 4-Role Switcher Pills */}
+      {/* Sticky Top Navbar */}
       <Navbar 
         cartCount={totalItemCount}
         onOpenCart={() => setIsCartOpen(true)}
@@ -127,7 +127,7 @@ const MainLayout = () => {
         onClose={() => setIsCommandOpen(false)}
         onSelectRole={(role) => {
           if (role === 'guest') navigate('/');
-          if (role === 'customer') navigate('/customer');
+          if (role === 'customer') navigate('/orders');
           if (role === 'seller') navigate('/seller');
           if (role === 'admin') navigate('/admin');
         }}
@@ -151,12 +151,13 @@ const MainLayout = () => {
         onAddToCart={handleAddToCart}
       />
 
-      {/* Smart Soft Gate Checkout Modal */}
-      <SoftGateModal 
-        isOpen={isSoftGateOpen}
-        onClose={() => setIsSoftGateOpen(false)}
-        onSuccess={handleSoftGateSuccess}
+      {/* Apple / Shopify Style Checkout Modal */}
+      <CheckoutModal 
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cartItems={cartItems}
         cartTotal={checkoutAmount}
+        onSuccess={handleCheckoutSuccess}
       />
     </div>
   );
