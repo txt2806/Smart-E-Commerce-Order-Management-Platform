@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   ShieldCheck, 
@@ -10,9 +10,13 @@ import {
   QrCode, 
   PackageCheck,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Zap,
+  Check,
+  Copy
 } from 'lucide-react';
 import { orderService } from '../services/order';
+import { paymentService } from '../services/payment';
 import { authService } from '../services/auth';
 import './CheckoutModal.css';
 
@@ -31,13 +35,59 @@ const CheckoutModal = ({ isOpen, onClose, cartItems = [], cartTotal = 0, onSucce
 
   const [loading, setLoading] = useState(false);
   const [orderResult, setOrderResult] = useState(null);
+  const [paymentInfo, setPaymentInfo] = useState(null);
+  const [isPaid, setIsPaid] = useState(false);
+  const [simulating, setSimulating] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Polling for VietQR payment status
+  useEffect(() => {
+    if (!orderResult || orderResult.paymentMethod !== 'SEPAY_BANK_TRANSFER' || isPaid) return;
+
+    let intervalId;
+    const fetchPayment = async () => {
+      try {
+        const info = await paymentService.getPaymentByOrderId(orderResult.id);
+        setPaymentInfo(info);
+        if (info && (info.status === 'SUCCESS' || info.status === 'PAID')) {
+          setIsPaid(true);
+        }
+      } catch (err) {
+        console.error('Error polling payment status:', err);
+      }
+    };
+
+    fetchPayment();
+    intervalId = setInterval(fetchPayment, 2500);
+    return () => clearInterval(intervalId);
+  }, [orderResult, isPaid]);
 
   if (!isOpen) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCopy = (text, field) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 1500);
+  };
+
+  const handleSimulatePayment = async () => {
+    if (!orderResult) return;
+    setSimulating(true);
+    try {
+      const updated = await paymentService.simulateSuccess(orderResult.id);
+      setPaymentInfo(updated);
+      setIsPaid(true);
+    } catch (err) {
+      console.error('Simulate payment error:', err);
+    } finally {
+      setSimulating(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -135,16 +185,97 @@ const CheckoutModal = ({ isOpen, onClose, cartItems = [], cartTotal = 0, onSucce
               <div className="qr-payment-box">
                 <div className="qr-header">
                   <QrCode size={18} color="var(--primary-glow)" />
-                  <span>Quét mã VietQR SePay để kích hoạt tức thì</span>
+                  <span>Quét mã VietQR SePay để thanh toán tức thì</span>
                 </div>
-                <div className="qr-mock-display">
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=SMARTSTORE-${orderResult.orderCode}-${orderResult.totalAmount}`} 
-                    alt="SePay VietQR" 
-                    className="qr-image"
-                  />
-                  <span className="qr-caption">Nội dung chuyển khoản: <strong>{orderResult.orderCode}</strong></span>
-                </div>
+
+                {isPaid ? (
+                  <div className="paid-success-banner">
+                    <div className="paid-icon-wrap">
+                      <CheckCircle2 size={32} color="var(--success-status)" />
+                    </div>
+                    <div className="paid-text">
+                      <h4>Đã Xác Nhận Thanh Toán Thành Công!</h4>
+                      <p>Hệ thống ngân hàng đã khớp lệnh chuyển khoản cho đơn hàng <strong>{orderResult.orderCode}</strong>.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="qr-display-arena">
+                      <div className="qr-image-wrapper">
+                        {paymentInfo?.qrUrl ? (
+                          <img 
+                            src={paymentInfo.qrUrl} 
+                            alt="VietQR Napas 247" 
+                            className="qr-image"
+                          />
+                        ) : (
+                          <div className="qr-loading-placeholder">Đang tạo mã VietQR...</div>
+                        )}
+                        <span className="qr-brand-sub">Napas 24/7 • Miễn phí chuyển khoản</span>
+                      </div>
+
+                      <div className="qr-bank-details">
+                        <div className="bank-detail-item">
+                          <span className="b-label">Ngân Hàng</span>
+                          <strong className="b-val">{paymentInfo?.bankName || 'MBBank (Quân Đội)'}</strong>
+                        </div>
+                        <div className="bank-detail-item">
+                          <span className="b-label">Số Tài Khoản</span>
+                          <div className="copy-val-row">
+                            <strong className="b-val mono-num">{paymentInfo?.bankAccount || '0988889999'}</strong>
+                            <button 
+                              type="button" 
+                              className="mini-copy-btn"
+                              onClick={() => handleCopy(paymentInfo?.bankAccount || '0988889999', 'acc')}
+                            >
+                              {copiedField === 'acc' ? <Check size={12} /> : <Copy size={12} />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="bank-detail-item">
+                          <span className="b-label">Chủ Tài Khoản</span>
+                          <strong className="b-val">{paymentInfo?.accountName || 'SMART STORE PLATFORM'}</strong>
+                        </div>
+                        <div className="bank-detail-item">
+                          <span className="b-label">Số Tiền Chuyển</span>
+                          <strong className="b-val mono-num highlight-amount">
+                            {paymentInfo?.amountVnd ? paymentInfo.amountVnd.toLocaleString() + ' ₫' : `$${Number(orderResult.totalAmount).toFixed(2)}`}
+                          </strong>
+                        </div>
+                        <div className="bank-detail-item">
+                          <span className="b-label">Nội Dung Chuyển Khoản</span>
+                          <div className="copy-val-row">
+                            <strong className="b-val mono-num highlight-content">
+                              {paymentInfo?.transferContent || ('ORD' + orderResult.id)}
+                            </strong>
+                            <button 
+                              type="button" 
+                              className="mini-copy-btn"
+                              onClick={() => handleCopy(paymentInfo?.transferContent || ('ORD' + orderResult.id), 'content')}
+                            >
+                              {copiedField === 'content' ? <Check size={12} /> : <Copy size={12} />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="qr-live-indicator">
+                      <div className="pulse-dot-yellow" />
+                      <span>Đang tự động nhận diện biến động số dư ngân hàng qua Webhook...</span>
+                    </div>
+
+                    <button 
+                      type="button"
+                      className="btn-simulate-pay"
+                      onClick={handleSimulatePayment}
+                      disabled={simulating}
+                    >
+                      <Zap size={14} color="#f59e0b" />
+                      <span>{simulating ? 'Đang xác nhận...' : '⚡ Mô Phỏng Quét QR Thành Công (Demo Test)'}</span>
+                    </button>
+                  </>
+                )}
               </div>
             )}
 

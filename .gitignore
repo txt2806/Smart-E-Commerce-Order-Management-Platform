@@ -1,0 +1,71 @@
+# ==========================================
+# 1. BẢO MẬT & SECRETS (TUYỆT ĐỐI KHÔNG ĐẨY)
+# ==========================================
+# File chứa mật khẩu Database thật, JWT Secret và Google OAuth
+**/application-secrets.yml
+**/application-secrets.yaml
+**/*secrets*.yml
+**/*secrets*.yaml
+.env
+.env.*
+!.env.example
+
+# ==========================================
+# 2. BUILD ARTIFACTS & PACKAGES
+# ==========================================
+# Node.js
+**/node_modules/
+**/dist/
+**/dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Java / Maven
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+build/
+*.jar
+*.war
+
+# ==========================================
+# 3. NGINX BINARIES, LOGS & DOCS
+# ==========================================
+# Không đẩy file chạy binary .exe và log tạm
+nginx/*.exe
+nginx/logs/
+nginx/temp/
+nginx/*.zip
+nginx/*.tar.gz
+nginx/contrib/
+nginx/docs/
+nginx/koi*
+nginx/win-utf
+nginx/html/
+*.pid
+
+# ==========================================
+# 4. LOGS & HỆ THỐNG
+# ==========================================
+*.log
+logs/
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# 5. CẤU HÌNH IDE & TRÌNH SOẠN THẢO
+# ==========================================
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.settings/
+.project
+.classpath
+.factorypath
+.nb-gradle/
+nbproject/

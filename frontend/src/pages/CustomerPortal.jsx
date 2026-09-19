@@ -22,11 +22,13 @@ import {
 import { orderService } from '../services/order';
 import { voucherService } from '../services/voucher';
 import { authService } from '../services/auth';
+import { customerService } from '../services/customer';
 import './CustomerPortal.css';
 
 const CustomerPortal = ({ onAddToCart }) => {
   const [orders, setOrders] = useState([]);
   const [vouchers, setVouchers] = useState([]);
+  const [loyaltyProfile, setLoyaltyProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState(null);
   const [disputeOrder, setDisputeOrder] = useState(null);
@@ -37,24 +39,26 @@ const CustomerPortal = ({ onAddToCart }) => {
 
   const currentUser = authService.getCurrentUser();
 
-  const fetchOrdersAndVouchers = async () => {
+  const fetchCustomerData = async () => {
     setLoading(true);
     try {
-      const [orderData, voucherData] = await Promise.all([
+      const [orderData, voucherData, loyaltyData] = await Promise.all([
         orderService.getMyOrders().catch(() => []),
-        voucherService.getAllVouchers().catch(() => [])
+        voucherService.getAllVouchers().catch(() => []),
+        customerService.getLoyaltyProfile().catch(() => null)
       ]);
       setOrders(orderData || []);
       setVouchers(voucherData || []);
+      setLoyaltyProfile(loyaltyData);
     } catch (err) {
-      console.error('Failed to load customer orders/vouchers:', err);
+      console.error('Failed to load customer portal data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOrdersAndVouchers();
+    fetchCustomerData();
   }, []);
 
   const handleCopyCode = (code) => {
@@ -92,24 +96,41 @@ const CustomerPortal = ({ onAddToCart }) => {
   return (
     <div className="customer-portal-page">
       <div className="portal-container">
-        {/* TOP: MEMBER LOYALTY TIER HEADER */}
+        {/* TOP: MEMBER LOYALTY TIER HEADER (Calculated by Backend) */}
         <section className="member-hero-card surface-card">
           <div className="member-tier-info">
             <div className="tier-badge-pill">
               <Award size={16} />
-              <span>HẠNG THÀNH VIÊN TITANIUM VIP</span>
+              <span>HẠNG THÀNH VIÊN {loyaltyProfile?.tierTitle || 'STANDARD MEMBER'}</span>
             </div>
-            <h2>Chào Mừng Trở Lại, Alex Turner</h2>
-            <p>Tích lũy chi tiêu: <strong className="mono-num">$8,498 / $10,000</strong> để nâng hạng Black Diamond vĩnh viễn.</p>
+            <h2>Chào Mừng Trở Lại, {loyaltyProfile?.fullName || loyaltyProfile?.username || currentUser?.username || 'Quý Khách'}</h2>
+            <p>
+              Tích lũy chi tiêu:{' '}
+              <strong className="mono-num">
+                ${(loyaltyProfile?.totalSpent ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {loyaltyProfile?.nextTierName ? ` / $${(loyaltyProfile?.targetSpend ?? 0).toLocaleString('en-US')}` : ''}
+              </strong>{' '}
+              {loyaltyProfile?.nextTierName 
+                ? `để nâng hạng ${loyaltyProfile.nextTierName} vĩnh viễn.` 
+                : 'Bạn đang sở hữu hạng mức đặc quyền cao nhất sàn.'}
+            </p>
             
             <div className="loyalty-progress-box">
               <div className="loyalty-bar-track">
-                <div className="loyalty-bar-fill" style={{ width: '85%' }} />
+                <div className="loyalty-bar-fill" style={{ width: `${loyaltyProfile?.progressPercentage ?? 0}%` }} />
               </div>
               <div className="loyalty-levels mono-num">
-                <span>Gold Tier ($5K)</span>
-                <span className="current-level">Titanium VIP (Hiện tại)</span>
-                <span>Black Diamond ($10K)</span>
+                {loyaltyProfile?.tierLevels ? (
+                  loyaltyProfile.tierLevels.map((lvl, idx) => (
+                    <span key={idx} className={lvl.includes('Hiện tại') ? 'current-level' : ''}>{lvl}</span>
+                  ))
+                ) : (
+                  <>
+                    <span>Khởi đầu</span>
+                    <span className="current-level">Standard (Hiện tại)</span>
+                    <span>Silver ($1K)</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -118,15 +139,15 @@ const CustomerPortal = ({ onAddToCart }) => {
             <div className="perk-item">
               <Sparkles size={16} color="var(--primary-glow)" />
               <div>
-                <strong>Hoàn tiền 3.5%</strong>
+                <strong>Hoàn tiền {loyaltyProfile?.cashbackRate || '1.0%'}</strong>
                 <p>Cộng trực tiếp vào ví xu</p>
               </div>
             </div>
             <div className="perk-item">
               <Truck size={16} color="var(--success-status)" />
               <div>
-                <strong>Hỏa tốc ưu tiên</strong>
-                <p>Đóng hàng trong 15 phút</p>
+                <strong>{loyaltyProfile?.shippingPrivilege || 'Giao hàng tiêu chuẩn toàn quốc'}</strong>
+                <p>Dịch vụ vận chuyển liên kết sàn</p>
               </div>
             </div>
             <div className="perk-item">
@@ -292,15 +313,37 @@ const CustomerPortal = ({ onAddToCart }) => {
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                           <MapPin size={13} color="var(--primary-glow)" />
-                          <span>Người nhận: <strong>{order.recipientName}</strong> ({order.phone || '09xx'})</span>
+                          <span>Người nhận: <strong>{order.recipientName}</strong>{order.phone ? ` - ${order.phone}` : ''}</span>
                         </div>
                         <div style={{ opacity: 0.6 }}>•</div>
                         <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           <span>{order.addressLine}, {order.city}</span>
                         </div>
-                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span className="micro-label">PTTT:</span>
-                          <strong style={{ color: 'var(--text-primary)' }}>{order.paymentMethod === 'SEPAY_BANK_TRANSFER' ? 'VietQR SePay' : 'COD'}</strong>
+                        {order.trackingNumber && (
+                          <>
+                            <div style={{ opacity: 0.6 }}>•</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--primary-glow)' }}>
+                              <Truck size={13} />
+                              <span className="mono-num"><strong>{order.carrier || 'Viettel Post'}:</strong> {order.trackingNumber}</span>
+                            </div>
+                          </>
+                        )}
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          {order.eta && (
+                            <span className="micro-label" style={{ color: 'var(--text-secondary)' }}>
+                              ETA: <strong className="mono-num">{order.eta}</strong>
+                            </span>
+                          )}
+                          <span className={`status-pill ${order.paymentStatus === 'SUCCESS' ? 'completed' : 'pending'}`} style={{
+                            fontSize: '0.7rem',
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '6px',
+                            background: order.paymentStatus === 'SUCCESS' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                            color: order.paymentStatus === 'SUCCESS' ? 'var(--success-status)' : '#f59e0b',
+                            fontWeight: '600'
+                          }}>
+                            {order.paymentStatus === 'SUCCESS' ? '✓ ĐÃ THANH TOÁN' : 'CHỜ THANH TOÁN'}
+                          </span>
                         </div>
                       </div>
                     )}

@@ -20,6 +20,9 @@ public class OrderResponseDto {
     private String city;
     private String paymentMethod;
     private String paymentStatus;
+    private String carrier;
+    private String trackingNumber;
+    private String eta;
     private List<OrderItemResponseDto> items;
     private List<SellerOrderSummaryDto> sellerOrders;
 

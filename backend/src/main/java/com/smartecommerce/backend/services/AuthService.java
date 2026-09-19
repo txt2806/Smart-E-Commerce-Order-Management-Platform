@@ -35,6 +35,7 @@ public class AuthService {
     private final OAuthAccountRepository oAuthAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final OneTimeTokenService oneTimeTokenService;
 
     @Value("${app.google.client-id}")
     private String googleClientId;
@@ -42,7 +43,8 @@ public class AuthService {
     public AuthService(AuthenticationManager authenticationManager, UserRepository userRepository,
                        UserProfileRepository userProfileRepository, CustomerRepository customerRepository,
                        SellerRepository sellerRepository, OAuthAccountRepository oAuthAccountRepository,
-                       PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider) {
+                       PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider,
+                       OneTimeTokenService oneTimeTokenService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
@@ -51,6 +53,7 @@ public class AuthService {
         this.oAuthAccountRepository = oAuthAccountRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.oneTimeTokenService = oneTimeTokenService;
     }
 
     @Transactional
@@ -87,20 +90,28 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(req.getUsername(), req.getPassword()));
         
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtTokenProvider.generateToken(authentication);
         
-        return new AuthRes(jwt, user.getId(), user.getUsername(), user.getRole().name());
+        // Persist real session and one-time token directly into MySQL
+        UserSession session = oneTimeTokenService.createSession(user);
+        String token = oneTimeTokenService.issueOneTimeToken(user);
+        
+        return new AuthRes(token, session.getSessionKey(), user.getId(), user.getUsername(), user.getRole().name());
     }
 
+    @Transactional
     public AuthRes login(LoginReq req) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(req.getUsername(), req.getPassword()));
         
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtTokenProvider.generateToken(authentication);
         
         User user = userRepository.findByUsername(req.getUsername()).get();
-        return new AuthRes(jwt, user.getId(), user.getUsername(), user.getRole().name());
+        
+        // Persist real session and single-use token directly into MySQL
+        UserSession session = oneTimeTokenService.createSession(user);
+        String token = oneTimeTokenService.issueOneTimeToken(user);
+        
+        return new AuthRes(token, session.getSessionKey(), user.getId(), user.getUsername(), user.getRole().name());
     }
 
     @Transactional
@@ -151,7 +162,6 @@ public class AuthService {
                 profile.setUser(user);
                 profile.setFirstName(name);
                 profile.setLastName("");
-                // Dummy phone since Google might not give it
                 profile.setPhone("GG-" + UUID.randomUUID().toString().substring(0,8));
                 profile.setEmail(email);
                 profile.setAvatarUrl(pictureUrl);
@@ -171,7 +181,18 @@ public class AuthService {
             oAuthAccountRepository.save(oAuthAccount);
         }
 
-        String jwt = jwtTokenProvider.generateTokenFromUsername(user.getUsername());
-        return new AuthRes(jwt, user.getId(), user.getUsername(), user.getRole().name());
+        UserSession session = oneTimeTokenService.createSession(user);
+        String token = oneTimeTokenService.issueOneTimeToken(user);
+        return new AuthRes(token, session.getSessionKey(), user.getId(), user.getUsername(), user.getRole().name());
+    }
+
+    @Transactional
+    public String renewToken(String sessionKey) {
+        return oneTimeTokenService.renewTokenFromSession(sessionKey);
+    }
+
+    @Transactional
+    public void logout(String sessionKey) {
+        oneTimeTokenService.revokeSession(sessionKey);
     }
 }

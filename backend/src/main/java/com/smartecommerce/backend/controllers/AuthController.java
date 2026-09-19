@@ -33,4 +33,20 @@ public class AuthController {
     public ResponseEntity<AuthRes> googleLogin(@Valid @RequestBody GoogleLoginReq req) throws Exception {
         return ResponseEntity.ok(authService.googleLogin(req));
     }
+
+    @PostMapping("/renew-token")
+    public ResponseEntity<com.smartecommerce.backend.dto.RenewTokenRes> renewToken(
+            @Valid @RequestBody com.smartecommerce.backend.dto.RenewTokenReq req) {
+        String newToken = authService.renewToken(req.getSessionKey());
+        return ResponseEntity.ok(new com.smartecommerce.backend.dto.RenewTokenRes(newToken));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<java.util.Map<String, String>> logout(
+            @RequestBody(required = false) com.smartecommerce.backend.dto.RenewTokenReq req) {
+        if (req != null && req.getSessionKey() != null) {
+            authService.logout(req.getSessionKey());
+        }
+        return ResponseEntity.ok(java.util.Collections.singletonMap("message", "Đã đăng xuất và thu hồi phiên làm việc"));
+    }
 }

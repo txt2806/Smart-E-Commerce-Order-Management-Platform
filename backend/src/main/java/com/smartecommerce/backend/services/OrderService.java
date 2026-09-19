@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,6 +29,8 @@ public class OrderService {
     private final UserDetailRepository userDetailRepository;
     private final PaymentRepository paymentRepository;
     private final SellerRepository sellerRepository;
+    private final DeliveryRepository deliveryRepository;
+    private final DeliveryService deliveryService;
 
     public OrderService(OrderRepository orderRepository,
                         SellerOrderRepository sellerOrderRepository,
@@ -38,7 +41,9 @@ public class OrderService {
                         UserRepository userRepository,
                         UserDetailRepository userDetailRepository,
                         PaymentRepository paymentRepository,
-                        SellerRepository sellerRepository) {
+                        SellerRepository sellerRepository,
+                        DeliveryRepository deliveryRepository,
+                        DeliveryService deliveryService) {
         this.orderRepository = orderRepository;
         this.sellerOrderRepository = sellerOrderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -49,6 +54,8 @@ public class OrderService {
         this.userDetailRepository = userDetailRepository;
         this.paymentRepository = paymentRepository;
         this.sellerRepository = sellerRepository;
+        this.deliveryRepository = deliveryRepository;
+        this.deliveryService = deliveryService;
     }
 
     private User getOrCreateCurrentUser(String email, String name) {
@@ -277,6 +284,8 @@ public class OrderService {
                 } else if (status == SellerOrder.Status.SHIPPING) {
                     mainOrder.setStatus(Order.Status.PROCESSING);
                     orderRepository.save(mainOrder);
+                    // Automatically provision shipping delivery
+                    deliveryService.createOrUpdateDelivery(sellerOrderId, "Viettel Post Hỏa Tốc", null);
                 }
             }
 
@@ -349,6 +358,19 @@ public class OrderService {
             return sDto;
         }).collect(Collectors.toList()));
 
+        // Find any active delivery info across seller orders
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
+        for (SellerOrder so : sellerOrders) {
+            deliveryRepository.findBySellerOrderId(so.getId()).ifPresent(del -> {
+                dto.setCarrier(del.getCarrier());
+                dto.setTrackingNumber(del.getTrackingNumber());
+                if (del.getEta() != null) {
+                    dto.setEta(del.getEta().format(dtf));
+                }
+            });
+            if (dto.getTrackingNumber() != null) break;
+        }
+
         return dto;
     }
 
@@ -362,6 +384,15 @@ public class OrderService {
         dto.setShippingFee(so.getShippingFee());
         dto.setTotal(so.getSubtotal().add(so.getShippingFee()));
         dto.setStatus(so.getStatus().name());
+
+        // Delivery info
+        deliveryRepository.findBySellerOrderId(so.getId()).ifPresent(del -> {
+            dto.setCarrier(del.getCarrier());
+            dto.setTrackingNumber(del.getTrackingNumber());
+            if (del.getEta() != null) {
+                dto.setEta(del.getEta().format(DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy")));
+            }
+        });
 
         if (so.getOrder() != null && so.getOrder().getShippingDetail() != null) {
             UserDetail detail = so.getOrder().getShippingDetail();

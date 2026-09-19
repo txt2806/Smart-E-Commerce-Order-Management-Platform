@@ -18,8 +18,11 @@ public class SellerOrderResponseDto {
     private BigDecimal subtotal;
     private BigDecimal shippingFee;
     private BigDecimal total;
-    private String status; // PENDING, PREPARING, SHIPPING, DELIVERED, CANCELLED
+    private String status;
     private String paymentMethod;
     private String paymentStatus;
+    private String carrier;
+    private String trackingNumber;
+    private String eta;
     private List<OrderResponseDto.OrderItemResponseDto> items;
 }

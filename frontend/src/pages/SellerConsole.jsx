@@ -432,8 +432,8 @@ const SellerConsole = () => {
                   </div>
 
                   <div className="dispatch-barcode-col">
-                    <div className="mock-barcode-render mono-num">||| |||| || |||||</div>
-                    <span className="barcode-caption micro-label">MÃ VẬN ĐƠN</span>
+                    <div className="mock-barcode-render mono-num">{order.trackingNumber || 'VTP-WAITING'}</div>
+                    <span className="barcode-caption micro-label">{order.carrier || 'Viettel Post Hỏa Tốc'}</span>
                   </div>
 
                   <div className="dispatch-status-col" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>

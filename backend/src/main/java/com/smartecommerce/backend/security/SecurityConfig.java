@@ -70,6 +70,9 @@ public class SecurityConfig {
                     .requestMatchers("/api/seller/**").permitAll()
                     .requestMatchers("/api/vouchers/**").permitAll()
                     .requestMatchers("/api/admin/**").permitAll()
+                    .requestMatchers("/api/payments/**").permitAll()
+                    .requestMatchers("/api/deliveries/**").permitAll()
+                    .requestMatchers("/api/customer/**").permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/error").permitAll()
                     .anyRequest().authenticated()
             );
@@ -83,10 +86,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000")); // Vite or CRA
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:5173", 
+            "http://localhost:3000",
+            "http://localhost",
+            "http://localhost:80",
+            "http://127.0.0.1",
+            "http://127.0.0.1:80"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
-        configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
+        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token", "x-requested-with"));
+        configuration.setExposedHeaders(Arrays.asList("x-auth-token", "X-Next-Access-Token", "x-next-access-token"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
