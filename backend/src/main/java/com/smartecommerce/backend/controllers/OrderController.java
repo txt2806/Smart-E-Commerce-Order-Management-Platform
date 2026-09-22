@@ -47,4 +47,12 @@ public class OrderController {
             @RequestBody UpdateOrderStatusDto dto) {
         return ResponseEntity.ok(orderService.updateSellerOrderStatus(id, dto.getStatus()));
     }
+
+    @PutMapping("/orders/{id}/cancel")
+    public ResponseEntity<OrderResponseDto> cancelOrder(
+            @PathVariable Long id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String reason = (body != null && body.get("reason") != null) ? body.get("reason") : "Khách hàng yêu cầu hủy đơn";
+        return ResponseEntity.ok(orderService.cancelOrder(id, reason));
+    }
 }

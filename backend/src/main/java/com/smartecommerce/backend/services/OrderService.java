@@ -5,6 +5,7 @@ import com.smartecommerce.backend.dto.OrderResponseDto;
 import com.smartecommerce.backend.dto.SellerOrderResponseDto;
 import com.smartecommerce.backend.entities.*;
 import com.smartecommerce.backend.repositories.*;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -87,6 +88,7 @@ public class OrderService {
     }
 
     @Transactional
+    @CacheEvict(value = {"products", "loyalty"}, allEntries = true)
     public OrderResponseDto createOrder(CreateOrderRequestDto request) {
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new IllegalArgumentException("Đơn hàng phải có ít nhất 1 sản phẩm.");
@@ -204,11 +206,8 @@ public class OrderService {
     public List<OrderResponseDto> getMyOrders() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || auth.getName().equalsIgnoreCase("anonymousUser")) {
-            // Return latest 10 orders for preview / guest convenience
-            return orderRepository.findAllByOrderByCreatedAtDesc().stream()
-                    .limit(10)
-                    .map(this::loadAndMapOrder)
-                    .collect(Collectors.toList());
+            List<Order> orders = orderRepository.findAllByOrderByCreatedAtDesc().stream().limit(10).collect(Collectors.toList());
+            return batchLoadAndMapOrders(orders);
         }
 
         User user = userRepository.findByUsername(auth.getName()).orElse(null);
@@ -218,14 +217,186 @@ public class OrderService {
 
         List<Order> orders = orderRepository.findByCustomerUserIdOrderByCreatedAtDesc(user.getId());
         if (orders.isEmpty()) {
-            // If user has no personal orders yet, fallback to recent platform orders for seamless demo
-            return orderRepository.findAllByOrderByCreatedAtDesc().stream()
-                    .limit(10)
-                    .map(this::loadAndMapOrder)
-                    .collect(Collectors.toList());
+            List<Order> demoOrders = orderRepository.findAllByOrderByCreatedAtDesc().stream().limit(10).collect(Collectors.toList());
+            return batchLoadAndMapOrders(demoOrders);
         }
 
-        return orders.stream().map(this::loadAndMapOrder).collect(Collectors.toList());
+        return batchLoadAndMapOrders(orders);
+    }
+
+    @Transactional
+    @CacheEvict(value = {"products", "loyalty"}, allEntries = true)
+    public OrderResponseDto cancelOrder(Long orderId, String reason) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng ID: " + orderId));
+
+        if (order.getStatus() == Order.Status.CANCELLED) {
+            throw new IllegalStateException("Đơn hàng này đã được hủy trước đó.");
+        }
+        if (order.getStatus() == Order.Status.COMPLETED) {
+            throw new IllegalStateException("Đơn hàng đã giao thành công, không thể hủy. Vui lòng yêu cầu đổi trả.");
+        }
+
+        // Cannot cancel if any seller order is already SHIPPING or DELIVERED
+        List<SellerOrder> sellerOrders = sellerOrderRepository.findByOrderId(orderId);
+        boolean alreadyShipped = sellerOrders.stream().anyMatch(so ->
+                so.getStatus() == SellerOrder.Status.SHIPPING || so.getStatus() == SellerOrder.Status.DELIVERED
+        );
+        if (alreadyShipped) {
+            throw new IllegalStateException("Đơn hàng đang trên đường vận chuyển, không thể hủy trực tiếp.");
+        }
+
+        // Security check
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+            User user = userRepository.findByUsername(auth.getName()).orElse(null);
+            if (user != null && user.getRole() != User.Role.ADMIN) {
+                if (order.getCustomer() != null && order.getCustomer().getUser() != null) {
+                    if (!order.getCustomer().getUser().getId().equals(user.getId())) {
+                        throw new SecurityException("Bạn không có quyền hủy đơn hàng của người khác.");
+                    }
+                }
+            }
+        }
+
+        // 1. Mark Order CANCELLED
+        order.setStatus(Order.Status.CANCELLED);
+        orderRepository.save(order);
+
+        // 2. Mark SellerOrders CANCELLED
+        for (SellerOrder so : sellerOrders) {
+            so.setStatus(SellerOrder.Status.CANCELLED);
+            sellerOrderRepository.save(so);
+        }
+
+        // 3. Restock inventory for each order item
+        List<OrderItem> items = orderItemRepository.findBySellerOrderOrderId(orderId);
+        for (OrderItem item : items) {
+            if (item.getProduct() != null) {
+                Product product = item.getProduct();
+                int currentStock = product.getStock() != null ? product.getStock() : 0;
+                int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+                product.setStock(currentStock + qty);
+                productRepository.save(product);
+            }
+        }
+
+        // 4. Update payment if pending
+        paymentRepository.findByOrderId(orderId).ifPresent(payment -> {
+            if (payment.getStatus() == Payment.Status.PENDING) {
+                payment.setStatus(Payment.Status.FAILED);
+                paymentRepository.save(payment);
+            }
+        });
+
+        return loadAndMapOrder(order);
+    }
+
+    private List<OrderResponseDto> batchLoadAndMapOrders(List<Order> orders) {
+        if (orders.isEmpty()) return Collections.emptyList();
+
+        List<Long> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
+
+        // Batch Query 1: All items with product and store
+        List<OrderItem> allItems = orderItemRepository.findByOrderIdInWithDetails(orderIds);
+        Map<Long, List<OrderItem>> itemsByOrderId = allItems.stream()
+                .filter(it -> it.getSellerOrder() != null && it.getSellerOrder().getOrder() != null)
+                .collect(Collectors.groupingBy(it -> it.getSellerOrder().getOrder().getId()));
+
+        // Batch Query 2: All seller orders
+        List<SellerOrder> allSellerOrders = sellerOrderRepository.findByOrderIdIn(orderIds);
+        Map<Long, List<SellerOrder>> sellerOrdersByOrderId = allSellerOrders.stream()
+                .filter(so -> so.getOrder() != null)
+                .collect(Collectors.groupingBy(so -> so.getOrder().getId()));
+
+        // Batch Query 3: All payments
+        List<Payment> allPayments = paymentRepository.findByOrderIdIn(orderIds);
+        Map<Long, Payment> paymentByOrderId = allPayments.stream()
+                .filter(p -> p.getOrder() != null)
+                .collect(Collectors.toMap(p -> p.getOrder().getId(), p -> p, (p1, p2) -> p1));
+
+        // Batch Query 4: Deliveries
+        List<Long> sellerOrderIds = allSellerOrders.stream().map(SellerOrder::getId).collect(Collectors.toList());
+        Map<Long, Delivery> deliveryBySellerOrderId = sellerOrderIds.isEmpty() ? Collections.emptyMap() :
+                deliveryRepository.findBySellerOrderIdIn(sellerOrderIds).stream()
+                        .filter(d -> d.getSellerOrder() != null)
+                        .collect(Collectors.toMap(d -> d.getSellerOrder().getId(), d -> d, (d1, d2) -> d1));
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
+        return orders.stream().map(order -> {
+            List<OrderItem> items = itemsByOrderId.getOrDefault(order.getId(), Collections.emptyList());
+            List<SellerOrder> sOrders = sellerOrdersByOrderId.getOrDefault(order.getId(), Collections.emptyList());
+            Payment payment = paymentByOrderId.get(order.getId());
+
+            OrderResponseDto dto = new OrderResponseDto();
+            dto.setId(order.getId());
+            dto.setOrderCode("ORD-" + (10000 + order.getId()));
+            dto.setCreatedAt(order.getCreatedAt());
+            dto.setTotalAmount(order.getTotalAmount());
+            dto.setStatus(order.getStatus().name());
+
+            if (order.getCustomer() != null && order.getCustomer().getUser() != null) {
+                dto.setCustomerUsername(order.getCustomer().getUser().getUsername());
+            }
+
+            if (order.getShippingDetail() != null) {
+                dto.setRecipientName(order.getShippingDetail().getName());
+                dto.setPhone(order.getShippingDetail().getPhone());
+                dto.setEmail(order.getShippingDetail().getEmail());
+                dto.setAddressLine(order.getShippingDetail().getAddressLine());
+                dto.setCity(order.getShippingDetail().getCity());
+            }
+
+            if (payment != null) {
+                dto.setPaymentMethod(payment.getMethod().name());
+                dto.setPaymentStatus(payment.getStatus().name());
+            } else {
+                dto.setPaymentMethod("COD");
+                dto.setPaymentStatus("PENDING");
+            }
+
+            dto.setItems(items.stream().map(it -> {
+                OrderResponseDto.OrderItemResponseDto itemDto = new OrderResponseDto.OrderItemResponseDto();
+                itemDto.setId(it.getId());
+                itemDto.setProductId(it.getProduct() != null ? it.getProduct().getId() : null);
+                itemDto.setProductName(it.getProductName() != null ? it.getProductName() : (it.getProduct() != null ? it.getProduct().getName() : "Sản phẩm"));
+                itemDto.setImageUrl(it.getImageUrl() != null ? it.getImageUrl() : (it.getProduct() != null ? it.getProduct().getImageUrl() : null));
+                itemDto.setSku(it.getProduct() != null ? it.getProduct().getSku() : null);
+                itemDto.setColor(it.getColor());
+                itemDto.setQuantity(it.getQuantity());
+                itemDto.setPriceAtBuy(it.getPriceAtBuy());
+                itemDto.setLineTotal(it.getPriceAtBuy().multiply(BigDecimal.valueOf(it.getQuantity())));
+                if (it.getSellerOrder() != null && it.getSellerOrder().getStore() != null) {
+                    itemDto.setStoreName(it.getSellerOrder().getStore().getName());
+                }
+                return itemDto;
+            }).collect(Collectors.toList()));
+
+            dto.setSellerOrders(sOrders.stream().map(so -> {
+                OrderResponseDto.SellerOrderSummaryDto sDto = new OrderResponseDto.SellerOrderSummaryDto();
+                sDto.setSellerOrderId(so.getId());
+                sDto.setStoreId(so.getStore() != null ? so.getStore().getId() : null);
+                sDto.setStoreName(so.getStore() != null ? so.getStore().getName() : "Smart Official Store");
+                sDto.setSubtotal(so.getSubtotal());
+                sDto.setShippingFee(so.getShippingFee());
+                sDto.setStatus(so.getStatus().name());
+                return sDto;
+            }).collect(Collectors.toList()));
+
+            for (SellerOrder so : sOrders) {
+                Delivery del = deliveryBySellerOrderId.get(so.getId());
+                if (del != null) {
+                    dto.setCarrier(del.getCarrier());
+                    dto.setTrackingNumber(del.getTrackingNumber());
+                    if (del.getEta() != null) {
+                        dto.setEta(del.getEta().format(dtf));
+                    }
+                    break;
+                }
+            }
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     public OrderResponseDto getOrderById(Long id) {
@@ -248,7 +419,6 @@ public class OrderService {
             }
         }
 
-        // If no specific store found for user or user is ADMIN, load orders for default primary store or all
         List<SellerOrder> sellerOrders;
         if (store != null) {
             sellerOrders = sellerOrderRepository.findByStoreId(store.getId());
@@ -256,9 +426,87 @@ public class OrderService {
             sellerOrders = sellerOrderRepository.findAll();
         }
 
+        if (sellerOrders.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> soIds = sellerOrders.stream().map(SellerOrder::getId).collect(Collectors.toList());
+        List<OrderItem> allItems = orderItemRepository.findBySellerOrderIdInWithProduct(soIds);
+        Map<Long, List<OrderItem>> itemsBySoId = allItems.stream()
+                .filter(it -> it.getSellerOrder() != null)
+                .collect(Collectors.groupingBy(it -> it.getSellerOrder().getId()));
+
+        Map<Long, Delivery> deliveryBySoId = deliveryRepository.findBySellerOrderIdIn(soIds).stream()
+                .filter(d -> d.getSellerOrder() != null)
+                .collect(Collectors.toMap(d -> d.getSellerOrder().getId(), d -> d, (d1, d2) -> d1));
+
+        List<Long> orderIds = sellerOrders.stream()
+                .filter(so -> so.getOrder() != null)
+                .map(so -> so.getOrder().getId())
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, Payment> paymentByOrderId = orderIds.isEmpty() ? Collections.emptyMap() :
+                paymentRepository.findByOrderIdIn(orderIds).stream()
+                        .filter(p -> p.getOrder() != null)
+                        .collect(Collectors.toMap(p -> p.getOrder().getId(), p -> p, (p1, p2) -> p1));
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
         return sellerOrders.stream()
                 .sorted((a, b) -> Long.compare(b.getId(), a.getId()))
-                .map(this::mapToSellerOrderResponseDto)
+                .map(so -> {
+                    SellerOrderResponseDto dto = new SellerOrderResponseDto();
+                    dto.setId(so.getId());
+                    dto.setOrderId(so.getOrder() != null ? so.getOrder().getId() : null);
+                    dto.setOrderCode("ORD-" + (10000 + (so.getOrder() != null ? so.getOrder().getId() : so.getId())));
+                    dto.setCreatedAt(so.getOrder() != null ? so.getOrder().getCreatedAt() : LocalDateTime.now());
+                    dto.setSubtotal(so.getSubtotal());
+                    dto.setShippingFee(so.getShippingFee());
+                    dto.setTotal(so.getSubtotal().add(so.getShippingFee()));
+                    dto.setStatus(so.getStatus().name());
+
+                    Delivery del = deliveryBySoId.get(so.getId());
+                    if (del != null) {
+                        dto.setCarrier(del.getCarrier());
+                        dto.setTrackingNumber(del.getTrackingNumber());
+                        if (del.getEta() != null) {
+                            dto.setEta(del.getEta().format(dtf));
+                        }
+                    }
+
+                    if (so.getOrder() != null && so.getOrder().getShippingDetail() != null) {
+                        UserDetail detail = so.getOrder().getShippingDetail();
+                        dto.setCustomerName(detail.getName());
+                        dto.setCustomerPhone(detail.getPhone());
+                        dto.setShippingAddress(detail.getAddressLine());
+                        dto.setCity(detail.getCity());
+                    }
+
+                    Payment payment = so.getOrder() != null ? paymentByOrderId.get(so.getOrder().getId()) : null;
+                    if (payment != null) {
+                        dto.setPaymentMethod(payment.getMethod().name());
+                        dto.setPaymentStatus(payment.getStatus().name());
+                    } else {
+                        dto.setPaymentMethod("COD");
+                        dto.setPaymentStatus("PENDING");
+                    }
+
+                    List<OrderItem> items = itemsBySoId.getOrDefault(so.getId(), Collections.emptyList());
+                    dto.setItems(items.stream().map(it -> {
+                        OrderResponseDto.OrderItemResponseDto itemDto = new OrderResponseDto.OrderItemResponseDto();
+                        itemDto.setId(it.getId());
+                        itemDto.setProductId(it.getProduct() != null ? it.getProduct().getId() : null);
+                        itemDto.setProductName(it.getProductName() != null ? it.getProductName() : (it.getProduct() != null ? it.getProduct().getName() : "Sản phẩm"));
+                        itemDto.setImageUrl(it.getImageUrl() != null ? it.getImageUrl() : (it.getProduct() != null ? it.getProduct().getImageUrl() : null));
+                        itemDto.setSku(it.getProduct() != null ? it.getProduct().getSku() : null);
+                        itemDto.setColor(it.getColor());
+                        itemDto.setQuantity(it.getQuantity());
+                        itemDto.setPriceAtBuy(it.getPriceAtBuy());
+                        itemDto.setLineTotal(it.getPriceAtBuy().multiply(BigDecimal.valueOf(it.getQuantity())));
+                        return itemDto;
+                    }).collect(Collectors.toList()));
+
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 

@@ -11,6 +11,8 @@ import com.smartecommerce.backend.repositories.ProductRepository;
 import com.smartecommerce.backend.repositories.SellerRepository;
 import com.smartecommerce.backend.repositories.StoreRepository;
 import com.smartecommerce.backend.repositories.UserRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +53,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(value = "products", allEntries = true)
     public ProductDto createProduct(ProductDto dto) {
         Store store = getCurrentStore();
         Category category = categoryRepository.findById(dto.getCategoryId())
@@ -77,6 +80,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(value = "products", allEntries = true)
     public ProductDto updateProduct(Long id, ProductDto dto) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
@@ -107,8 +111,9 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
+    @Cacheable(value = "products", key = "'all'")
     public List<ProductDto> getAllProducts() {
-        return productRepository.findAll().stream()
+        return productRepository.findAllWithDetails().stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }

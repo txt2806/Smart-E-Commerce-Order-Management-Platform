@@ -347,7 +347,23 @@
   width: 85%;
   height: 85%;
   object-fit: contain;
-  transition: opacity 160ms var(--ease-apple), transform 0.4s var(--ease-apple);
+  transition: opacity 200ms var(--ease-apple), transform 0.4s var(--ease-apple);
+}
+
+.product-img-skeleton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+.product-main-render.loading {
+  opacity: 0;
+}
+
+.product-main-render.loaded {
+  opacity: 1;
 }
 
 .product-hover-render {

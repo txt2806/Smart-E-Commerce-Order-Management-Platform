@@ -24,6 +24,23 @@ import { productService } from '../services/product';
 import { categoryService } from '../services/category';
 import './Storefront.css';
 
+const optimizeImageUrl = (url, width = 360, quality = 75) => {
+  if (!url) return 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=360&q=75';
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('unsplash.com')) {
+      u.searchParams.set('auto', 'format');
+      u.searchParams.set('fit', 'crop');
+      u.searchParams.set('w', String(width));
+      u.searchParams.set('q', String(quality));
+      return u.toString();
+    }
+    return url;
+  } catch {
+    return url;
+  }
+};
+
 const CATEGORY_ICONS = {
   'Mac': Laptop,
   'iPhone': Smartphone,
@@ -32,6 +49,97 @@ const CATEGORY_ICONS = {
   'Apple Vision Pro': Glasses,
   'AirPods & Âm Thanh': Headphones,
   'Màn Hình & Phụ Kiện': Keyboard
+};
+
+const ProductCard = ({ product, onOpenPDP, onQuickAdd, addedStatus }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const price = parseFloat(product.basePrice);
+
+  const fallbackUrl = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=360&q=75';
+  const mainSrc = imgError ? fallbackUrl : optimizeImageUrl(product.imageUrl, 360, 75);
+  const hoverSrc = product.hoverImageUrl ? optimizeImageUrl(product.hoverImageUrl, 360, 75) : null;
+
+  return (
+    <div 
+      className="apple-product-card"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onOpenPDP({
+        ...product,
+        price,
+        image: product.imageUrl,
+        hoverImage: product.hoverImageUrl
+      })}
+    >
+      <div className="product-visual-container">
+        {!imgLoaded && <div className="skeleton product-img-skeleton" />}
+        <img 
+          src={mainSrc} 
+          alt={product.name} 
+          className={`product-main-render ${imgLoaded ? 'loaded' : 'loading'}`}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setImgLoaded(true)}
+          onError={() => { setImgError(true); setImgLoaded(true); }}
+        />
+        {isHovered && hoverSrc && (
+          <img 
+            src={hoverSrc} 
+            alt={`${product.name} view`} 
+            className="product-hover-render" 
+            decoding="async"
+            style={{ opacity: 1 }}
+          />
+        )}
+        {product.badge && (
+          <span className="apple-badge-pill">{product.badge}</span>
+        )}
+      </div>
+
+      <div className="product-info-wrap">
+        <div className="product-meta-top">
+          <span className="category-micro-text micro-label">{product.categoryName}</span>
+          <div className="rating-pill">
+            <Star size={11} fill="#F59E0B" color="#F59E0B" />
+            <span className="mono-num">{product.rating}</span>
+          </div>
+        </div>
+
+        <h3 className="product-title-text">{product.name}</h3>
+        <p className="product-desc-text">{product.subname || product.description}</p>
+
+        <div className="product-free-shipping">
+          <Truck size={13} color="var(--success-status)" />
+          <span>Giao hàng miễn phí toàn quốc</span>
+        </div>
+
+        <div className="product-bottom-bar">
+          <div className="price-stack">
+            <span className="price-main mono-num">${price.toFixed(2)}</span>
+            <span className="stock-info micro-label mono-num">
+              Tồn kho: {product.stock}
+            </span>
+          </div>
+
+          <button 
+            className={`apple-buy-btn ${addedStatus === 'success' ? 'success' : ''}`}
+            onClick={(e) => onQuickAdd(product, e)}
+            disabled={addedStatus === 'loading'}
+          >
+            {addedStatus === 'loading' ? (
+              <div className="apple-btn-spin" />
+            ) : addedStatus === 'success' ? (
+              <Check size={16} />
+            ) : (
+              <span>Mua Ngay</span>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const Storefront = ({ onAddToCart, onOpenPDP }) => {
@@ -199,7 +307,7 @@ const Storefront = ({ onAddToCart, onOpenPDP }) => {
                   </span>
                 </div>
                 <div className="spotlight-card-image">
-                  <img src={item.imageUrl} alt={item.name} />
+                  <img src={optimizeImageUrl(item.imageUrl, 480, 80)} alt={item.name} loading="lazy" decoding="async" />
                 </div>
               </div>
             ))}
@@ -233,85 +341,15 @@ const Storefront = ({ onAddToCart, onOpenPDP }) => {
             </div>
           ) : (
             <div className="apple-product-grid">
-              {filteredProducts.map(product => {
-                const addedStatus = cardAddedMap[product.id];
-                const price = parseFloat(product.basePrice);
-
-                return (
-                  <div 
-                    key={product.id} 
-                    className="apple-product-card"
-                    onClick={() => onOpenPDP({
-                      ...product,
-                      price,
-                      image: product.imageUrl,
-                      hoverImage: product.hoverImageUrl
-                    })}
-                  >
-                    {/* Visual box with smooth hover zoom */}
-                    <div className="product-visual-container">
-                      <img 
-                        src={product.imageUrl} 
-                        alt={product.name} 
-                        className="product-main-render" 
-                      />
-                      {product.hoverImageUrl && (
-                        <img 
-                          src={product.hoverImageUrl} 
-                          alt={`${product.name} view`} 
-                          className="product-hover-render" 
-                        />
-                      )}
-
-                      {product.badge && (
-                        <span className="apple-badge-pill">{product.badge}</span>
-                      )}
-                    </div>
-
-                    {/* Information */}
-                    <div className="product-info-wrap">
-                      <div className="product-meta-top">
-                        <span className="category-micro-text micro-label">{product.categoryName}</span>
-                        <div className="rating-pill">
-                          <Star size={11} fill="#F59E0B" color="#F59E0B" />
-                          <span className="mono-num">{product.rating}</span>
-                        </div>
-                      </div>
-
-                      <h3 className="product-title-text">{product.name}</h3>
-                      <p className="product-desc-text">{product.subname || product.description}</p>
-
-                      <div className="product-free-shipping">
-                        <Truck size={13} color="var(--success-status)" />
-                        <span>Giao hàng miễn phí toàn quốc</span>
-                      </div>
-
-                      <div className="product-bottom-bar">
-                        <div className="price-stack">
-                          <span className="price-main mono-num">${price.toFixed(2)}</span>
-                          <span className="stock-info micro-label mono-num">
-                            Tồn kho: {product.stock}
-                          </span>
-                        </div>
-
-                        <button 
-                          className={`apple-buy-btn ${addedStatus === 'success' ? 'success' : ''}`}
-                          onClick={(e) => handleQuickAdd(product, e)}
-                          disabled={addedStatus === 'loading'}
-                        >
-                          {addedStatus === 'loading' ? (
-                            <div className="apple-btn-spin" />
-                          ) : addedStatus === 'success' ? (
-                            <Check size={16} />
-                          ) : (
-                            <span>Mua Ngay</span>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredProducts.map(product => (
+                <ProductCard 
+                  key={product.id}
+                  product={product}
+                  onOpenPDP={onOpenPDP}
+                  onQuickAdd={handleQuickAdd}
+                  addedStatus={cardAddedMap[product.id]}
+                />
+              ))}
             </div>
           )}
         </section>

@@ -30,14 +30,10 @@ public class AdminController {
 
     @GetMapping("/metrics")
     public ResponseEntity<Map<String, Object>> getAdminMetrics() {
-        List<Order> orders = orderRepository.findAll();
-        BigDecimal gmv = orders.stream()
-                .map(o -> o.getTotalAmount() != null ? o.getTotalAmount() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+        BigDecimal gmv = orderRepository.calculateTotalGmv();
         long productCount = productRepository.count();
         long storeCount = storeRepository.count();
-        long orderCount = orders.size();
+        long orderCount = orderRepository.count();
 
         Map<String, Object> metrics = new HashMap<>();
         metrics.put("gmv", gmv.compareTo(BigDecimal.ZERO) > 0 ? gmv : BigDecimal.valueOf(2489120.00));

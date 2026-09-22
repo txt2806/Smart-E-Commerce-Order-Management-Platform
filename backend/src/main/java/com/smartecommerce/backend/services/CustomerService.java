@@ -9,6 +9,7 @@ import com.smartecommerce.backend.repositories.CustomerRepository;
 import com.smartecommerce.backend.repositories.OrderRepository;
 import com.smartecommerce.backend.repositories.UserProfileRepository;
 import com.smartecommerce.backend.repositories.UserRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,7 +36,16 @@ public class CustomerService {
         this.orderRepository = orderRepository;
     }
 
+    public String getCurrentUsernameOrGuest() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+            return auth.getName();
+        }
+        return "guest";
+    }
+
     @Transactional
+    @Cacheable(value = "loyalty", key = "#root.target.getCurrentUsernameOrGuest()")
     public CustomerLoyaltyDto getLoyaltyProfile() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         User user = null;

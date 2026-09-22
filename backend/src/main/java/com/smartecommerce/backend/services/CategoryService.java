@@ -3,6 +3,7 @@ package com.smartecommerce.backend.services;
 import com.smartecommerce.backend.dto.CategoryDto;
 import com.smartecommerce.backend.entities.Category;
 import com.smartecommerce.backend.repositories.CategoryRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +18,7 @@ public class CategoryService {
         this.categoryRepository = categoryRepository;
     }
 
+    @Cacheable(value = "categories", key = "'all'")
     public List<CategoryDto> getAllCategories() {
         return categoryRepository.findAll().stream()
                 .map(this::mapToDto)
