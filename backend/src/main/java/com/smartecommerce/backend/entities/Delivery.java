@@ -10,7 +10,7 @@ public class Delivery {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne
     @JoinColumn(name = "seller_order_id", nullable = false, unique = true)
     private SellerOrder sellerOrder;
     private String carrier;

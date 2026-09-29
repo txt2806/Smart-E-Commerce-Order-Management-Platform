@@ -15,18 +15,24 @@ import {
   Sparkles, 
   Layers, 
   Clock, 
-  UserCheck 
+  UserCheck,
+  Truck
 } from 'lucide-react';
 import { adminService } from '../services/admin';
 import { orderService } from '../services/order';
+import { deliveryService } from '../services/delivery';
 import './AdminCommandCenter.css';
 
 const AdminCommandCenter = () => {
   const [metrics, setMetrics] = useState({ gmv: 2489120, takeRate: 8.5 });
   const [vendors, setVendors] = useState([]);
+  const [disputesList, setDisputesList] = useState([]);
+  const [sellerOrders, setSellerOrders] = useState([]);
+  const [updatingDeliveryId, setUpdatingDeliveryId] = useState(null);
   const [activeDispute, setActiveDispute] = useState({
     id: 'DSP-8821',
     orderId: 'ORD-1',
+    rawOrderId: 1,
     amount: 3499.00,
     buyer: {
       name: 'Khách Hàng Hệ Thống',
@@ -50,10 +56,11 @@ const AdminCommandCenter = () => {
   useEffect(() => {
     const loadAdminData = async () => {
       try {
-        const [metricData, storeData, orderData] = await Promise.all([
+        const [metricData, storeData, orderData, disputesData] = await Promise.all([
           adminService.getMetrics().catch(() => null),
           adminService.getStores().catch(() => []),
-          orderService.getSellerOrders().catch(() => [])
+          orderService.getSellerOrders().catch(() => []),
+          adminService.getDisputes().catch(() => [])
         ]);
 
         if (metricData) {
@@ -73,14 +80,24 @@ const AdminCommandCenter = () => {
         }
 
         if (orderData && orderData.length > 0) {
+          setSellerOrders(orderData);
+        }
+
+        if (disputesData && disputesData.length > 0) {
+          setDisputesList(disputesData);
+          setActiveDispute(disputesData[0]);
+          if (disputesData[0].status === 'REFUNDED') setRulingState('REFUND');
+          else if (disputesData[0].status === 'RELEASED') setRulingState('RELEASE');
+        } else if (orderData && orderData.length > 0) {
           const firstOrd = orderData[0];
           setActiveDispute({
             id: 'DSP-' + firstOrd.id,
             orderId: firstOrd.orderCode || ('ORD-' + firstOrd.id),
-            amount: Number(firstOrd.totalAmount || 3499),
+            rawOrderId: firstOrd.orderId || firstOrd.id,
+            amount: Number(firstOrd.total || firstOrd.subtotal || 3499),
             buyer: {
-              name: firstOrd.receiverName || 'Khách Hàng Smart Store',
-              email: firstOrd.customerEmail || 'customer@smartecom.io',
+              name: firstOrd.customerName || 'Khách Hàng Smart Store',
+              email: firstOrd.customerPhone || 'customer@smartecom.io',
               issue: 'Kiểm định chất lượng bàn giao sản phẩm và xác nhận giải ngân ký quỹ.',
               evidenceImage: 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?auto=format&fit=crop&w=600&q=80',
               timestamp: firstOrd.createdAt ? new Date(firstOrd.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
@@ -104,11 +121,48 @@ const AdminCommandCenter = () => {
     loadAdminData();
   }, []);
 
-  const handleArbitrate = (decision) => {
-    setRulingState(decision);
-    setTimeout(() => {
-      alert(`Phán quyết thành công: ${decision === 'REFUND' ? `Đã hoàn tiền 100% về ví Người mua ($${activeDispute.amount.toFixed(2)})` : 'Bác bỏ khiếu nại & Giải ngân cho Nhà bán hàng'}`);
-    }, 400);
+  const handleSelectDispute = (dsp) => {
+    setActiveDispute(dsp);
+    if (dsp.status === 'REFUNDED') setRulingState('REFUND');
+    else if (dsp.status === 'RELEASED') setRulingState('RELEASE');
+    else setRulingState(null);
+  };
+
+  const handleArbitrate = async (decision) => {
+    try {
+      setRulingState(decision);
+      const targetOrderId = activeDispute.rawOrderId || (activeDispute.orderId ? activeDispute.orderId.replace('ORD-', '') : null);
+      if (targetOrderId) {
+        await adminService.arbitrateDispute(targetOrderId, decision, 'Phán quyết bởi Sàn Smart Store');
+      }
+      alert(`Phán quyết thành công: ${decision === 'REFUND' ? `Đã hoàn tiền 100% về ví Người mua ($${Number(activeDispute.amount).toFixed(2)}) & hoàn kho tự động.` : 'Bác bỏ khiếu nại & Giải ngân ký quỹ bảo chứng cho Nhà bán hàng.'}`);
+
+      // Refresh metrics and disputes list
+      const [metricData, disputesData] = await Promise.all([
+        adminService.getMetrics().catch(() => null),
+        adminService.getDisputes().catch(() => [])
+      ]);
+      if (metricData) setMetrics(metricData);
+      if (disputesData && disputesData.length > 0) {
+        setDisputesList(disputesData);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Lỗi khi phán quyết tranh chấp.');
+    }
+  };
+
+  const handleUpdateDeliveryStatus = async (sellerOrderId, newStatus) => {
+    setUpdatingDeliveryId(sellerOrderId);
+    try {
+      await deliveryService.updateDeliveryStatus(sellerOrderId, newStatus);
+      const updatedOrders = await orderService.getSellerOrders().catch(() => []);
+      setSellerOrders(updatedOrders);
+      alert(`Đã cập nhật vận chuyển kiện hàng #${sellerOrderId} sang trạng thái: ${newStatus}. Hệ thống tự động kiểm tra hoàn tất đơn hàng và giải ngân ký quỹ!`);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Lỗi cập nhật trạng thái vận chuyển.');
+    } finally {
+      setUpdatingDeliveryId(null);
+    }
   };
 
   const handleApproveVendor = async (vendorId, rawId) => {
@@ -238,10 +292,33 @@ const AdminCommandCenter = () => {
               <div>
                 <h3>Bàn Phân Xử Tranh Chấp Sàn (Split-View Dispute Center)</h3>
                 <p className="table-hint">
-                  Hồ sơ tranh chấp #{activeDispute.id} • Đơn hàng #{activeDispute.orderId} • Ký quỹ bảo chứng: <strong className="mono-num">${activeDispute.amount.toFixed(2)}</strong>
+                  Hồ sơ tranh chấp #{activeDispute.id} • Đơn hàng #{activeDispute.orderId} • Ký quỹ bảo chứng: <strong className="mono-num">${Number(activeDispute.amount || 0).toFixed(2)}</strong>
                 </p>
               </div>
             </div>
+
+            {disputesList && disputesList.length > 1 && (
+              <div className="dispute-tabs-selector" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {disputesList.map(dsp => (
+                  <button
+                    key={dsp.id}
+                    onClick={() => handleSelectDispute(dsp)}
+                    className="btn-secondary"
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      borderRadius: '6px',
+                      border: activeDispute.id === dsp.id ? '1px solid var(--primary-glow)' : '1px solid rgba(255,255,255,0.1)',
+                      background: activeDispute.id === dsp.id ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                      color: 'var(--text-main)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    #{dsp.id} ({dsp.status})
+                  </button>
+                ))}
+              </div>
+            )}
 
             {rulingState && (
               <div className={`ruling-final-badge ${rulingState.toLowerCase()}`}>
@@ -398,6 +475,59 @@ const AdminCommandCenter = () => {
                       <UserCheck size={15} />
                       <span>Cấp Phép Verified</span>
                     </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 4. LOGISTICS & ESCROW SETTLEMENT MONITOR */}
+        <section className="vendor-pipeline-section surface-card" style={{ marginTop: '24px' }}>
+          <div className="vendor-pipeline-header">
+            <div>
+              <h3>Giám Sát Vận Chuyển & Quyết Toán Ký Quỹ (Logistics & Auto Settlement)</h3>
+              <p className="table-hint">Đồng bộ vận đơn qua VTP/GHN; khi toàn bộ kiện hàng DELIVERED hệ thống tự động giải ngân và khấu trừ phí sàn 8.5%</p>
+            </div>
+            <span className="mono-num micro-label">{sellerOrders.length} Kiện hàng vận hành</span>
+          </div>
+
+          <div className="vendors-list-stack">
+            {sellerOrders.slice(0, 5).map(so => (
+              <div key={so.id} className="vendor-review-card surface-elevate-2">
+                <div className="vendor-left-info">
+                  <div className="vendor-title-row">
+                    <Truck size={18} color="var(--primary-glow)" />
+                    <h4>Đơn hàng {so.orderCode || ('#' + (so.orderId || so.id))} • Kiện #{so.id}</h4>
+                    <span className={`status-badge ${so.status ? so.status.toLowerCase() : 'pending'}`}>
+                      {so.status}
+                    </span>
+                  </div>
+                  <div className="vendor-details-row">
+                    <span>Vận đơn: <strong className="mono-num">{so.trackingNumber || 'VTP-CHỜ PHÁT'}</strong></span>
+                    <span>•</span>
+                    <span>Khách: <strong>{so.customerName || 'Khách hàng'}</strong> ({so.customerPhone || 'N/A'})</span>
+                    <span>•</span>
+                    <span>Giá trị kiện: <strong className="mono-num">${Number(so.total || so.subtotal || 0).toFixed(2)}</strong></span>
+                  </div>
+                </div>
+
+                <div className="vendor-actions" style={{ display: 'flex', gap: '8px' }}>
+                  {so.status !== 'DELIVERED' && so.status !== 'CANCELLED' && (
+                    <button
+                      className="btn-primary"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      disabled={updatingDeliveryId === so.id}
+                      onClick={() => handleUpdateDeliveryStatus(so.id, 'DELIVERED')}
+                    >
+                      <Check size={14} />
+                      <span>{updatingDeliveryId === so.id ? 'Đang cập nhật...' : 'Giao Thành Công (DELIVERED)'}</span>
+                    </button>
+                  )}
+                  {so.status === 'DELIVERED' && (
+                    <span className="verified-badge" style={{ padding: '6px 12px' }}>
+                      <Check size={12} /> ĐÃ QUYẾT TOÁN ESCROW
+                    </span>
                   )}
                 </div>
               </div>

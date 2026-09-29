@@ -24,10 +24,18 @@ export const orderService = {
   updateSellerOrderStatus: async (id, status) => {
     const response = await api.put(`/seller/orders/${id}/status`, { status });
     return response.data;
+<<<<<<< HEAD
   },
 
   cancelOrder: async (id, reason) => {
     const response = await api.put(`/orders/${id}/cancel`, { reason });
     return response.data;
+  },
+
+  submitDispute: async (id, data) => {
+    const response = await api.post(`/orders/${id}/dispute`, data);
+    return response.data;
+=======
+>>>>>>> parent of ed07eb4 (Round 4)
   }
 };

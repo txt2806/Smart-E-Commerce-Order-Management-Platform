@@ -47,6 +47,7 @@ public class OrderController {
             @RequestBody UpdateOrderStatusDto dto) {
         return ResponseEntity.ok(orderService.updateSellerOrderStatus(id, dto.getStatus()));
     }
+<<<<<<< HEAD
 
     @PutMapping("/orders/{id}/cancel")
     public ResponseEntity<OrderResponseDto> cancelOrder(
@@ -55,4 +56,19 @@ public class OrderController {
         String reason = (body != null && body.get("reason") != null) ? body.get("reason") : "Khách hàng yêu cầu hủy đơn";
         return ResponseEntity.ok(orderService.cancelOrder(id, reason));
     }
+
+    @PostMapping("/orders/{id}/dispute")
+    public ResponseEntity<?> submitDispute(
+            @PathVariable Long id,
+            @RequestBody(required = false) com.smartecommerce.backend.dto.DisputeDto.CreateDisputeRequest req) {
+        String reason = (req != null && req.getReason() != null) ? req.getReason() : "Hàng không đúng mô tả";
+        String evidence = (req != null && req.getEvidenceImage() != null) ? req.getEvidenceImage() : null;
+        orderService.submitDispute(id, reason, evidence);
+        return ResponseEntity.ok(java.util.Map.of(
+                "message", "Đã gửi khiếu nại thành công tới Bàn Phân Xử Sàn.",
+                "orderId", id
+        ));
+    }
+=======
+>>>>>>> parent of ed07eb4 (Round 4)
 }

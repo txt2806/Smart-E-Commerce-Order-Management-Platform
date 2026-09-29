@@ -13,6 +13,8 @@ public class CreateOrderRequestDto {
     private String city;
     private String notes;
     private String paymentMethod; // COD, SEPAY_BANK_TRANSFER
+    private String voucherCode;
+    private BigDecimal discountAmount;
     private List<OrderItemRequest> items;
 
     @Data

@@ -35,4 +35,21 @@ public class DeliveryController {
         String tracking = body != null ? body.get("trackingNumber") : null;
         return ResponseEntity.ok(deliveryService.createOrUpdateDelivery(sellerOrderId, carrier, tracking));
     }
+
+    @PutMapping("/{sellerOrderId}/status")
+    public ResponseEntity<DeliveryDto> updateDeliveryStatus(
+            @PathVariable Long sellerOrderId,
+            @RequestParam(required = false) com.smartecommerce.backend.entities.Delivery.Status status,
+            @RequestBody(required = false) Map<String, String> body) {
+        com.smartecommerce.backend.entities.Delivery.Status targetStatus = status;
+        if (targetStatus == null && body != null && body.containsKey("status")) {
+            try {
+                targetStatus = com.smartecommerce.backend.entities.Delivery.Status.valueOf(body.get("status").toUpperCase());
+            } catch (Exception ignored) {}
+        }
+        if (targetStatus == null) {
+            targetStatus = com.smartecommerce.backend.entities.Delivery.Status.DELIVERED;
+        }
+        return ResponseEntity.ok(deliveryService.updateDeliveryStatus(sellerOrderId, targetStatus));
+    }
 }

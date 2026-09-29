@@ -14,5 +14,15 @@ export const adminService = {
   updateStoreStatus: async (id, status) => {
     const response = await api.put(`/admin/stores/${id}/status`, { status });
     return response.data;
+  },
+
+  getDisputes: async () => {
+    const response = await api.get('/admin/disputes');
+    return response.data;
+  },
+
+  arbitrateDispute: async (orderId, decision, note) => {
+    const response = await api.post(`/admin/disputes/${orderId}/arbitrate`, { decision, note });
+    return response.data;
   }
 };

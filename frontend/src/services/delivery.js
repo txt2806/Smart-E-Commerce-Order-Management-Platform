@@ -12,5 +12,10 @@ export const deliveryService = {
       trackingNumber
     });
     return response.data;
+  },
+
+  updateDeliveryStatus: async (sellerOrderId, status) => {
+    const response = await api.put(`/deliveries/${sellerOrderId}/status`, { status });
+    return response.data;
   }
 };
